@@ -29,6 +29,7 @@ com\gearflow\repository\CategoryRepository.class
 com\gearflow\config\RateLimitingFilter.class
 com\gearflow\dto\ProductVariantDTO$ProductVariantDTOBuilder.class
 com\gearflow\entity\AttributeDefinition$AttributeType.class
+com\gearflow\controller\OrderManagementController$StatusUpdateRequest$StatusUpdateRequestBuilder.class
 com\gearflow\repository\ProductViewRepository.class
 com\gearflow\entity\ProductAttribute$ProductAttributeBuilder.class
 com\gearflow\dto\OrderItemDTO.class
@@ -129,6 +130,7 @@ com\gearflow\exception\ResourceNotFoundException.class
 com\gearflow\entity\ProductAttribute.class
 com\gearflow\service\RecommendationService.class
 com\gearflow\controller\PublicBrandController.class
+com\gearflow\service\OrderManagementService$1.class
 com\gearflow\entity\ShippingAddress.class
 com\gearflow\dto\ProductDTO$ProductDTOBuilder.class
 com\gearflow\dto\CategoryDTO.class

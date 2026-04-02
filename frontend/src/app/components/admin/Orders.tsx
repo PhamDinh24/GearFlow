@@ -7,7 +7,7 @@ import { AdminPageWrapper } from './PageWrapper';
 import { orderApi } from '../../services/api';
 import { OrderDTO } from '../../types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
-import { Search, ShoppingCart, Package, TrendingUp, Clock } from 'lucide-react';
+import { Search, ShoppingCart, Package, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Orders: React.FC = () => {
@@ -17,6 +17,9 @@ export const Orders: React.FC = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ orderId: string; status: string } | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -41,17 +44,34 @@ export const Orders: React.FC = () => {
     setShowDialog(true);
   };
 
-  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+  const confirmStatusChange = (orderId: string, newStatus: string) => {
+    setPendingStatusChange({ orderId, status: newStatus });
+    setShowConfirmDialog(true);
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!pendingStatusChange) return;
+
+    const { orderId, status } = pendingStatusChange;
+    
     try {
-      await orderApi.updateOrderStatus(orderId, newStatus);
+      setUpdatingStatus(orderId);
+      await orderApi.updateOrderStatus(orderId, status);
       toast.success('Cập nhật trạng thái thành công');
-      loadOrders();
+      
+      // Update the local state
+      setOrders(orders.map(o => o.id === orderId ? {...o, status} : o));
       if (selectedOrder?.id === orderId) {
-        setSelectedOrder({...selectedOrder, status: newStatus});
+        setSelectedOrder({...selectedOrder, status});
       }
     } catch (error: any) {
       console.error('Error updating order status:', error);
-      toast.error(error.message || 'Không thể cập nhật trạng thái');
+      const errorMsg = error.response?.data?.message || error.message || 'Không thể cập nhật trạng thái';
+      toast.error(errorMsg);
+    } finally {
+      setUpdatingStatus(null);
+      setShowConfirmDialog(false);
+      setPendingStatusChange(null);
     }
   };
 
@@ -91,6 +111,25 @@ export const Orders: React.FC = () => {
       case 'DELIVERED': return '✅ Hoàn thành';
       case 'CANCELLED': return '❌ Đã hủy';
       default: return status;
+    }
+  };
+
+  const getValidNextStatuses = (currentStatus: string): string[] => {
+    switch (currentStatus) {
+      case 'PENDING':
+        return ['CONFIRMED', 'CANCELLED'];
+      case 'CONFIRMED':
+        return ['PROCESSING', 'CANCELLED'];
+      case 'PROCESSING':
+        return ['SHIPPED', 'CANCELLED'];
+      case 'SHIPPED':
+        return ['DELIVERED'];
+      case 'DELIVERED':
+        return [];
+      case 'CANCELLED':
+        return [];
+      default:
+        return [];
     }
   };
 
@@ -281,16 +320,20 @@ export const Orders: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600 mb-2">Trạng Thái Đơn Hàng</p>
                 <div className="flex flex-wrap gap-2">
-                  {['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map(status => (
-                    <Button
-                      key={status}
-                      size="sm"
-                      variant={selectedOrder.status === status ? 'default' : 'outline'}
-                      onClick={() => handleUpdateStatus(selectedOrder.id, status)}
-                    >
-                      {getStatusLabel(status)}
-                    </Button>
-                  ))}
+                  {['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map(status => {
+                    const isValidTransition = getValidNextStatuses(selectedOrder.status).includes(status) || selectedOrder.status === status;
+                    return (
+                      <Button
+                        key={status}
+                        size="sm"
+                        variant={selectedOrder.status === status ? 'default' : 'outline'}
+                        disabled={!isValidTransition || updatingStatus === selectedOrder.id}
+                        onClick={() => status !== selectedOrder.status ? confirmStatusChange(selectedOrder.id, status) : null}
+                      >
+                        {getStatusLabel(status)}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -325,6 +368,37 @@ export const Orders: React.FC = () => {
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent aria-describedby="confirm-dialog-description">
+          <DialogHeader>
+            <DialogTitle>Xác Nhận Yêu Cầu</DialogTitle>
+            <DialogDescription id="confirm-dialog-description">
+              Bạn có chắc chắn muốn thay đổi trạng thái đơn hàng thành "{getStatusLabel(pendingStatusChange?.status || '')}"?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-4">
+            <div className="flex-1 p-3 bg-blue-50 rounded flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-700">
+                <p className="font-semibold mb-1">Thay đổi trạng thái có thể ảnh hưởng đến:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Email thông báo gửi cho khách hàng</li>
+                  <li>Số lượng hàng được cấp lại (nếu hủy)</li>
+                  <li>Thống kê doanh số</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>Hủy</Button>
+            <Button onClick={handleUpdateStatus} disabled={updatingStatus !== null}>
+              {updatingStatus ? 'Đang cập nhật...' : 'Xác Nhận'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AdminPageWrapper>

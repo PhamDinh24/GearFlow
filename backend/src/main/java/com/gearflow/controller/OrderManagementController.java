@@ -3,6 +3,10 @@ package com.gearflow.controller;
 import com.gearflow.dto.OrderDTO;
 import com.gearflow.entity.Order;
 import com.gearflow.service.OrderManagementService;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +21,18 @@ import org.springframework.web.bind.annotation.*;
 public class OrderManagementController {
     private final OrderManagementService orderManagementService;
 
+    @GetMapping
+    public ResponseEntity<?> getAllOrders() {
+        log.info("GET /api/admin/orders");
+        return ResponseEntity.ok(orderManagementService.getAllOrders());
+    }
+
+    @GetMapping("/{orderId}")
+    public ResponseEntity<?> getOrder(@PathVariable String orderId) {
+        log.info("GET /api/admin/orders/{}", orderId);
+        return ResponseEntity.ok(orderManagementService.getOrder(orderId));
+    }
+
     @PostMapping("/{orderId}/cancel")
     public ResponseEntity<OrderDTO> cancelOrder(@PathVariable String orderId) {
         log.info("POST /api/admin/orders/{}/cancel", orderId);
@@ -28,19 +44,22 @@ public class OrderManagementController {
             @PathVariable String orderId,
             @RequestBody StatusUpdateRequest request) {
         log.info("PUT /api/admin/orders/{}/status - Status: {}", orderId, request.getStatus());
-        Order.OrderStatus status = Order.OrderStatus.valueOf(request.getStatus());
-        return ResponseEntity.ok(orderManagementService.updateOrderStatus(orderId, status));
+        try {
+            Order.OrderStatus status = Order.OrderStatus.valueOf(request.getStatus().toUpperCase());
+            OrderDTO result = orderManagementService.updateOrderStatus(orderId, status);
+            log.info("Order status updated successfully for id: {}", orderId);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid order status: {}", request.getStatus());
+            throw new com.gearflow.exception.BusinessException("Invalid order status: " + request.getStatus());
+        }
     }
 
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class StatusUpdateRequest {
         private String status;
-
-        public String getStatus() {
-            return status;
-        }
-
-        public void setStatus(String status) {
-            this.status = status;
-        }
     }
 }
