@@ -3,6 +3,10 @@ package com.gearflow.controller;
 import com.gearflow.dto.OrderDTO;
 import com.gearflow.entity.Order;
 import com.gearflow.service.AdminService;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -68,10 +72,23 @@ public class AdminController {
     @PutMapping("/orders/{id}/status")
     public ResponseEntity<OrderDTO> updateOrderStatus(
             @PathVariable String id,
-            @RequestBody Map<String, String> request) {
-        log.info("PUT /api/admin/orders/{}/status - Status: {}", id, request.get("status"));
-        String status = request.get("status");
-        OrderDTO order = adminService.updateOrderStatus(id, status);
-        return ResponseEntity.ok(order);
+            @RequestBody StatusUpdateRequest request) {
+        log.info("PUT /api/admin/orders/{}/status - Status: {}", id, request.getStatus());
+        try {
+            Order.OrderStatus status = Order.OrderStatus.valueOf(request.getStatus().toUpperCase());
+            OrderDTO order = adminService.updateOrderStatus(id, status.toString());
+            return ResponseEntity.ok(order);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid order status: {}", request.getStatus());
+            throw new com.gearflow.exception.BusinessException("Invalid order status: " + request.getStatus());
+        }
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class StatusUpdateRequest {
+        private String status;
     }
 }

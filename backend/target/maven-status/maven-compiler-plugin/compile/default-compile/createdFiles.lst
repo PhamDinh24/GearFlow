@@ -19,6 +19,7 @@ com\gearflow\controller\OrderManagementController.class
 com\gearflow\entity\Notification$NotificationBuilder.class
 com\gearflow\entity\User.class
 com\gearflow\service\UserService.class
+com\gearflow\controller\AdminController$StatusUpdateRequest$StatusUpdateRequestBuilder.class
 com\gearflow\controller\PaymentController.class
 com\gearflow\exception\GlobalExceptionHandler.class
 com\gearflow\controller\ProductController.class
@@ -35,6 +36,7 @@ com\gearflow\entity\ProductAttribute$ProductAttributeBuilder.class
 com\gearflow\dto\OrderItemDTO.class
 com\gearflow\controller\CartController.class
 com\gearflow\repository\AttributeDefinitionRepository.class
+com\gearflow\controller\AdminController$StatusUpdateRequest.class
 com\gearflow\controller\ExportController.class
 com\gearflow\service\ProductVariantService.class
 com\gearflow\repository\OrderRepository.class
