@@ -4,13 +4,16 @@ import { Card, CardContent, CardFooter } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Heart, ShoppingCart } from "lucide-react";
 import { useEffect, useState } from "react";
-import { apiService, ProductDTO } from "../services/api";
+import { productApi } from "../services/api";
+import type { ProductDTO } from "../types";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 export function Home() {
   const [products, setProducts] = useState<ProductDTO[]>([]);
+  const [newestProducts, setNewestProducts] = useState<ProductDTO[]>([]);
+  const [bestSellingProducts, setBestSellingProducts] = useState<ProductDTO[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,8 +22,27 @@ export function Home() {
 
   const loadProducts = async () => {
     try {
-      const response = await apiService.getProducts(0, 8);
-      setProducts(response.content);
+      const response = await productApi.getProducts(0, 8);
+      const allProducts = response.content;
+      setProducts(allProducts);
+      
+      // Get newest products (sort by createdAt)
+      const newest = [...allProducts]
+        .sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return dateB - dateA;
+        })
+        .slice(0, 5);
+      setNewestProducts(newest);
+      
+      // Get best selling products (sort by viewCount or random for now)
+      // In real app, this should come from backend with actual sales data
+      const bestSelling = [...allProducts]
+        .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+        .slice(0, 5);
+      setBestSellingProducts(bestSelling);
+      
     } catch (error) {
       console.error('Error loading products:', error);
     } finally {
@@ -57,8 +79,48 @@ export function Home() {
         </div>
       </section>
 
-      {/* Products */}
+      {/* Best Selling Products */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 bg-gray-50">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-3xl font-bold">🔥 Sản phẩm bán chạy</h2>
+            <p className="text-gray-600 mt-2">Top 5 sản phẩm được mua nhiều nhất</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          {bestSellingProducts.map((product, index) => (
+            <div key={product.id} className="relative">
+              <div className="absolute -top-2 -left-2 z-10 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                {index + 1}
+              </div>
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Newest Products */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-3xl font-bold">✨ Sản phẩm mới nhất</h2>
+            <p className="text-gray-600 mt-2">Những sản phẩm vừa được ra mắt</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          {newestProducts.map(product => (
+            <div key={product.id} className="relative">
+              <Badge className="absolute top-2 right-2 z-10 bg-green-500">Mới</Badge>
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Products */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 bg-gray-50">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-3xl font-bold">Sản phẩm nổi bật</h2>

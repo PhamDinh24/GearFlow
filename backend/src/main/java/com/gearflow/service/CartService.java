@@ -149,10 +149,30 @@ public class CartService {
                     BigDecimal price = product.getBasePrice().add(variant.getPriceModifier());
                     BigDecimal subtotal = price.multiply(BigDecimal.valueOf(item.getQuantity()));
 
+                    // Build variant details string
+                    StringBuilder variantDetails = new StringBuilder();
+                    if (variant.getColor() != null && !variant.getColor().isEmpty()) {
+                        variantDetails.append(variant.getColor());
+                    }
+                    if (variant.getSwitchType() != null && !variant.getSwitchType().isEmpty()) {
+                        if (variantDetails.length() > 0) variantDetails.append(", ");
+                        variantDetails.append(variant.getSwitchType());
+                    }
+                    if (variant.getKeycapSet() != null && !variant.getKeycapSet().isEmpty()) {
+                        if (variantDetails.length() > 0) variantDetails.append(", ");
+                        variantDetails.append(variant.getKeycapSet());
+                    }
+                    if (variant.getConnectionType() != null && !variant.getConnectionType().isEmpty()) {
+                        if (variantDetails.length() > 0) variantDetails.append(", ");
+                        variantDetails.append(variant.getConnectionType());
+                    }
+
                     return CartItemDTO.builder()
                             .variantId(item.getVariantId())
                             .productId(product.getId())
                             .productName(product.getName())
+                            .imageUrl(product.getImageUrl())
+                            .variantDetails(variantDetails.length() > 0 ? variantDetails.toString() : null)
                             .quantity(item.getQuantity())
                             .price(price)
                             .subtotal(subtotal)

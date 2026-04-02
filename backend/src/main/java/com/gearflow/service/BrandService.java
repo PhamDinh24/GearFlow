@@ -80,6 +80,7 @@ public class BrandService {
                 .id(brand.getId())
                 .name(brand.getName())
                 .description(brand.getDescription())
+                .createdAt(brand.getCreatedAt())
                 .build();
     }
 }

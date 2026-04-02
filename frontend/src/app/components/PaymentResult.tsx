@@ -1,11 +1,64 @@
 import { useLocation, Link } from "react-router";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { CheckCircle, XCircle } from "lucide-react";
+import { paymentApi } from "../services/api";
 
 export function PaymentResult() {
   const location = useLocation();
-  const { success, paymentMethod, orderId } = location.state || { success: true };
+  const query = new URLSearchParams(location.search);
+  const vnpResponseCode = query.get("vnp_ResponseCode");
+  const [success, setSuccess] = useState<boolean | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<string>("VNPAY");
+
+  useEffect(() => {
+    const returnState = location.state as {
+      success?: boolean;
+      paymentMethod?: string;
+      orderId?: string;
+    };
+    if (returnState?.orderId) {
+      setOrderId(returnState.orderId);
+      setPaymentMethod(returnState.paymentMethod || "VNPAY");
+      if (returnState.success !== undefined) {
+        setSuccess(returnState.success);
+      }
+    }
+
+    async function verifyVNPay() {
+      if (vnpResponseCode) {
+        const params: Record<string, string> = {};
+        query.forEach((value, key) => {
+          params[key] = value;
+        });
+        try {
+          const payment = await paymentApi.verifyVnpayCallback(params);
+          setOrderId(payment.orderId || orderId);
+          setPaymentMethod(payment.paymentMethod || "VNPAY");
+          setSuccess(payment.status === "SUCCESS");
+        } catch (error) {
+          console.error("VNPAY verification failed", error);
+          setSuccess(false);
+        }
+      }
+    }
+
+    if (vnpResponseCode) {
+      verifyVNPay();
+    } else if (success === null) {
+      setSuccess(false);
+    }
+  }, [location, vnpResponseCode, orderId, query]);
+
+  if (success === null) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center text-lg">Đang xử lý thanh toán...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

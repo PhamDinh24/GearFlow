@@ -38,6 +38,9 @@ public class User {
     @Column(length = 500)
     private String address;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     @Builder.Default

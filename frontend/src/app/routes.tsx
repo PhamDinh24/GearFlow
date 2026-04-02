@@ -6,19 +6,29 @@ import { ProductDetail } from "./components/ProductDetail";
 import { Cart } from "./components/Cart";
 import { Checkout } from "./components/Checkout";
 import { PaymentResult } from "./components/PaymentResult";
-import { UserProfile } from "./components/UserProfile";
-import { OrderHistory } from "./components/OrderHistory";
-import { Wishlist } from "./components/Wishlist";
-import { ChangePassword } from "./components/ChangePassword";
-import { AdminLayout } from "./components/AdminLayout";
-import { AdminDashboard } from "./components/AdminDashboard";
-import { AdminProducts } from "./components/AdminProducts";
-import { AdminInventory } from "./components/AdminInventory";
-import { AdminOrders } from "./components/AdminOrders";
-import { AdminCustomers } from "./components/AdminCustomers";
-import { Login } from "./components/Login";
-import { Register } from "./components/Register";
-import { NotFound } from "./components/NotFound";
+
+// User components
+import { Profile } from "./components/user/Profile";
+import { OrderHistory } from "./components/user/OrderHistory";
+import { OrderDetail } from "./components/user/OrderDetail";
+import { Wishlist } from "./components/user/Wishlist";
+import { ChangePassword } from "./components/user/ChangePassword";
+import { ShippingAddresses } from "./components/user/ShippingAddresses";
+
+// Admin components
+import { Dashboard } from "./components/admin/Dashboard";
+import { Products } from "./components/admin/Products";
+import { Brands } from "./components/admin/Brands";
+import { Categories } from "./components/admin/Categories";
+import { Orders } from "./components/admin/Orders";
+import { Customers } from "./components/admin/Customers";
+import { ImportExport } from "./components/admin/ImportExport";
+import { Header } from "./components/admin/Header";
+
+// Common components
+import { Login } from "./components/common/Login";
+import { Register } from "./components/common/Register";
+import { NotFound } from "./components/common/NotFound";
 
 export const router = createBrowserRouter([
   {
@@ -33,22 +43,26 @@ export const router = createBrowserRouter([
       { path: "cart", Component: Cart },
       { path: "checkout", Component: Checkout },
       { path: "payment-result", Component: PaymentResult },
-      { path: "profile", Component: UserProfile },
+      { path: "profile", Component: Profile },
       { path: "orders", Component: OrderHistory },
+      { path: "orders/:orderId", Component: OrderDetail },
       { path: "wishlist", Component: Wishlist },
+      { path: "addresses", Component: ShippingAddresses },
       { path: "change-password", Component: ChangePassword },
       { path: "*", Component: NotFound },
     ],
   },
   {
     path: "/admin",
-    Component: AdminLayout,
+    Component: Root,
     children: [
-      { index: true, Component: AdminDashboard },
-      { path: "products", Component: AdminProducts },
-      { path: "inventory", Component: AdminInventory },
-      { path: "orders", Component: AdminOrders },
-      { path: "customers", Component: AdminCustomers },
+      { index: true, Component: Dashboard },
+      { path: "products", Component: Products },
+      { path: "brands", Component: Brands },
+      { path: "categories", Component: Categories },
+      { path: "orders", Component: Orders },
+      { path: "customers", Component: Customers },
+      { path: "import-export", Component: ImportExport },
     ],
   },
 ]);

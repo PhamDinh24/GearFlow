@@ -10,6 +10,7 @@ import com.gearflow.entity.User;
 import com.gearflow.exception.BusinessException;
 import com.gearflow.exception.ResourceNotFoundException;
 import com.gearflow.repository.OrderRepository;
+import com.gearflow.repository.ProductRepository;
 import com.gearflow.repository.ProductVariantRepository;
 import com.gearflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,8 +28,10 @@ import java.util.stream.Collectors;
 public class OrderService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
     private final CartService cartService;
+    private final StockService stockService;
 
     @Transactional
     public OrderDTO createOrder(String userId, OrderRequest request) {
@@ -43,12 +46,24 @@ public class OrderService {
             throw new BusinessException("Cart is empty");
         }
 
+        // Validate shipping info
+        if (request.getShippingAddress() == null || request.getShippingAddress().trim().isEmpty()) {
+            throw new BusinessException("Shipping address is required");
+        }
+        if (request.getShippingPhone() == null || request.getShippingPhone().trim().isEmpty()) {
+            throw new BusinessException("Shipping phone is required");
+        }
+
         // Create order
         Order order = Order.builder()
                 .id(java.util.UUID.randomUUID().toString())
                 .userId(user.getId())
                 .status(Order.OrderStatus.PENDING)
                 .totalAmount(cartDTO.getTotalPrice())
+                .shippingAddress(request.getShippingAddress())
+                .shippingCity(request.getShippingCity())
+                .shippingPostalCode(request.getShippingPostalCode())
+                .shippingPhone(request.getShippingPhone())
                 .build();
 
         // Add items
@@ -56,10 +71,16 @@ public class OrderService {
             variantRepository.findById(cartItem.getVariantId())
                     .orElseThrow(() -> new ResourceNotFoundException("Variant not found"));
 
+            if (!stockService.canReserve(cartItem.getVariantId(), cartItem.getQuantity())) {
+                throw new BusinessException("Insufficient stock for variant " + cartItem.getVariantId());
+            }
+            stockService.decrementStock(cartItem.getVariantId(), cartItem.getQuantity());
+
             OrderItem item = OrderItem.builder()
                     .id(java.util.UUID.randomUUID().toString())
                     .orderId(order.getId())
                     .productId(cartItem.getProductId())
+                    .variantId(cartItem.getVariantId())
                     .quantity(cartItem.getQuantity())
                     .price(cartItem.getPrice())
                 .build();
@@ -102,6 +123,38 @@ public class OrderService {
         return toDTO(order);
     }
 
+    @Transactional
+    public OrderDTO cancelOrder(String orderId, String userId) {
+        log.info("Cancelling order {} for user {}", orderId, userId);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        // Verify user owns the order
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException("You can only cancel your own orders");
+        }
+
+        // Only allow cancellation of PENDING, CONFIRMED, or PROCESSING orders
+        if (order.getStatus() != Order.OrderStatus.PENDING 
+            && order.getStatus() != Order.OrderStatus.CONFIRMED
+            && order.getStatus() != Order.OrderStatus.PROCESSING) {
+            throw new BusinessException("Cannot cancel order in " + order.getStatus() + " status");
+        }
+
+        // Restore stock for each item when order is cancelled
+        for (var item : order.getItems()) {
+            if (item.getVariantId() != null) {
+                stockService.incrementStock(item.getVariantId(), item.getQuantity());
+            }
+        }
+
+        order.setStatus(Order.OrderStatus.CANCELLED);
+        order = orderRepository.save(order);
+
+        log.info("Order cancelled successfully");
+        return toDTO(order);
+    }
+
     private void validateStatusTransition(Order.OrderStatus currentStatus, Order.OrderStatus newStatus) {
         if (currentStatus == Order.OrderStatus.DELIVERED || currentStatus == Order.OrderStatus.CANCELLED) {
             throw new BusinessException("Cannot change status of completed order");
@@ -111,22 +164,28 @@ public class OrderService {
         }
     }
 
-    private OrderDTO toDTO(Order order) {
+    public OrderDTO toDTO(Order order) {
         return OrderDTO.builder()
                 .id(order.getId())
                 .userId(order.getUserId())
                 .status(order.getStatus().toString())
                 .totalAmount(order.getTotalAmount())
+                .shippingAddress(order.getShippingAddress())
+                .shippingCity(order.getShippingCity())
+                .shippingPostalCode(order.getShippingPostalCode())
+                .shippingPhone(order.getShippingPhone())
                 .items(order.getItems() != null ? order.getItems().stream()
                         .map(item -> OrderItemDTO.builder()
                                 .id(item.getId())
                                 .orderId(item.getOrderId())
                                 .productId(item.getProductId())
+                                .variantId(item.getVariantId())
+                                .productName(productRepository.findById(item.getProductId()).map(com.gearflow.entity.Product::getName).orElse(null))
                                 .quantity(item.getQuantity())
                                 .price(item.getPrice())
                                 .subtotal(item.getPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())))
                                 .build())
-                        .collect(Collectors.toList()) : java.util.Collections.emptyList())
+                        .collect(Collectors.toList()) : java.util.Collections.<OrderItemDTO>emptyList())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();

@@ -2,11 +2,19 @@ package com.gearflow.service;
 
 import com.gearflow.dto.FacetCountDTO;
 import com.gearflow.dto.ProductDTO;
+import com.gearflow.dto.ProductVariantDTO;
+import com.gearflow.dto.ProductAttributeDTO;
 import com.gearflow.entity.Brand;
 import com.gearflow.entity.Category;
 import com.gearflow.entity.Product;
+import com.gearflow.entity.ProductVariant;
+import com.gearflow.entity.ProductAttribute;
+import com.gearflow.entity.Stock;
 import com.gearflow.exception.ResourceNotFoundException;
 import com.gearflow.repository.ProductRepository;
+import com.gearflow.repository.ProductVariantRepository;
+import com.gearflow.repository.ProductAttributeRepository;
+import com.gearflow.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -19,6 +27,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -27,6 +36,9 @@ import java.util.Map;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
+    private final ProductAttributeRepository productAttributeRepository;
+    private final StockRepository stockRepository;
 
     @Cacheable(value = "products", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -101,6 +113,15 @@ public class ProductService {
         log.info("Product deleted with id: {}", id);
     }
 
+    @Transactional
+    public void updateProductImage(String productId, String imageUrl) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
+        product.setImageUrl(imageUrl);
+        productRepository.save(product);
+        log.info("Product image updated for product: {}", productId);
+    }
+
     private Product buildProductFromDTO(ProductDTO dto) {
         return Product.builder()
                 .name(dto.getName())
@@ -124,6 +145,26 @@ public class ProductService {
     }
 
     public ProductDTO convertToDTO(Product product) {
+        // Load variants with stock
+        List<ProductVariant> variants = productVariantRepository.findByProductId(product.getId());
+        List<ProductVariantDTO> variantDTOs = variants.stream()
+                .map(this::convertVariantToDTO)
+                .collect(Collectors.toList());
+
+        // Load attributes
+        List<ProductAttribute> attributes = productAttributeRepository.findByProductId(product.getId());
+        List<ProductAttributeDTO> attributeDTOs = attributes.stream()
+                .map(this::convertAttributeToDTO)
+                .collect(Collectors.toList());
+
+        // Calculate total stock from all variants
+        int totalStock = variants.stream()
+                .mapToInt(v -> {
+                    Stock stock = stockRepository.findById(v.getId()).orElse(null);
+                    return stock != null ? stock.getQuantity() : 0;
+                })
+                .sum();
+
         return ProductDTO.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -135,6 +176,37 @@ public class ProductService {
                 .imageUrl(product.getImageUrl())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
+                .variants(variantDTOs)
+                .attributes(attributeDTOs)
+                .stock(totalStock)
+                .build();
+    }
+
+    private ProductVariantDTO convertVariantToDTO(ProductVariant variant) {
+        // Get stock for this variant
+        Stock stock = stockRepository.findById(variant.getId()).orElse(null);
+        int stockQuantity = stock != null ? stock.getQuantity() : 0;
+
+        return ProductVariantDTO.builder()
+                .id(variant.getId())
+                .productId(variant.getProductId())
+                .switchType(variant.getSwitchType())
+                .color(variant.getColor())
+                .keycapSet(variant.getKeycapSet())
+                .connectionType(variant.getConnectionType())
+                .priceModifier(variant.getPriceModifier())
+                .availableStock(stockQuantity)
+                .stock(stockQuantity)
+                .inStock(stockQuantity > 0)
+                .build();
+    }
+
+    private ProductAttributeDTO convertAttributeToDTO(ProductAttribute attribute) {
+        return ProductAttributeDTO.builder()
+                .id(attribute.getId())
+                .productId(attribute.getProductId())
+                .name(attribute.getName())
+                .value(attribute.getValue())
                 .build();
     }
 }

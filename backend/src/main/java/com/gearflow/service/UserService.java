@@ -72,12 +72,22 @@ public class UserService {
         log.info("Password changed successfully for user: {}", user.getUsername());
     }
 
+    @Transactional
+    public void updateUserImage(String userId, String imageUrl) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setImageUrl(imageUrl);
+        userRepository.save(user);
+        log.info("User image updated for user: {}", userId);
+    }
+
     private UserDTO convertToDTO(User user) {
         return UserDTO.builder()
             .id(user.getId())
             .username(user.getUsername())
             .phone(user.getPhone())
             .address(user.getAddress())
+            .imageUrl(user.getImageUrl())
             .role(user.getRole().toString())
             .createdAt(user.getCreatedAt())
             .updatedAt(user.getUpdatedAt())

@@ -101,6 +101,12 @@ public class AdminService {
 
     public List<OrderDTO> getOrdersByStatus(Order.OrderStatus status) {
         log.info("Fetching orders with status: {}", status);
+        if (status == null) {
+            // Return all orders if no status specified
+            return orderRepository.findAll().stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+        }
         return orderRepository.findByStatus(status).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());

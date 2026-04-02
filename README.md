@@ -1,19 +1,19 @@
-# 🎹 GearFlow - Hệ Thống Thương Mại Điện Tử Bàn Phím Cơ
+# 🎹 GearFlow - Mechanical Keyboard E-Commerce Platform
 
-Hệ thống thương mại điện tử chuyên về bàn phím cơ với đầy đủ chức năng quản lý admin và mua sắm cho khách hàng.
+A complete e-commerce system specialized in mechanical keyboards with full admin management and customer shopping features.
 
-## 📋 Tổng Quan
+## 📋 Overview
 
-GearFlow là một nền tảng e-commerce hoàn chỉnh cho phép:
-- **Khách hàng:** Duyệt sản phẩm, thêm vào giỏ hàng, đặt hàng, đánh giá sản phẩm
-- **Admin:** Quản lý sản phẩm, đơn hàng, khách hàng, kho hàng với dashboard thống kê
+GearFlow is a complete e-commerce platform that enables:
+- **Customers:** Browse products, add to cart, place orders, review products
+- **Admins:** Manage products, orders, customers, inventory with analytics dashboard
 
-## 🛠️ Công Nghệ
+## 🛠️ Technology Stack
 
 ### Backend
 - Java 17 + Spring Boot 3.x
 - PostgreSQL (Database)
-- Redis (Cache - tùy chọn)
+- Redis (Cache - optional)
 - Spring Security + JWT
 - Flyway (Database Migration)
 - Maven
@@ -26,15 +26,15 @@ GearFlow là một nền tảng e-commerce hoàn chỉnh cho phép:
 - Radix UI (Components)
 - Lucide React (Icons)
 
-## 🚀 Khởi Động Nhanh
+## 🚀 Quick Start
 
-### Yêu Cầu Hệ Thống
+### System Requirements
 
 - Java 17+
 - Node.js 16+
 - PostgreSQL 12+
 - Maven 3.6+
-- Redis 6+ (tùy chọn)
+- Redis 6+ (optional)
 
 ### 1. Clone Repository
 
@@ -43,132 +43,152 @@ git clone https://github.com/your-username/gearflow.git
 cd gearflow
 ```
 
-### 2. Chuẩn Bị Database
+### 2. Setup Database
 
 ```sql
 CREATE DATABASE gearflow;
 ```
 
-### 3. Khởi Động Backend
+### 3. Reset Database (First Time Setup)
+
+**Windows:**
+```bash
+cd backend
+reset-database.bat
+```
+
+**Linux/Mac:**
+```bash
+cd backend
+chmod +x reset-database.sh
+./reset-database.sh
+```
+
+### 4. Start Backend
 
 ```bash
 cd backend
-
-# Sửa lỗi migration nếu cần
-mvn flyway:repair
-
-# Chạy backend
+mvn clean install
 mvn spring-boot:run
 ```
 
-Backend chạy tại: **http://localhost:8080/api**
+Backend runs at: **http://localhost:8080/api**
 
-### 4. Khởi Động Frontend
+### 5. Start Frontend
 
-Mở terminal mới:
+Open new terminal:
 
 ```bash
 cd frontend
 
-# Cài đặt dependencies
+# Install dependencies
 npm install
 
-# Chạy dev server
+# Run dev server
 npm run dev
 ```
 
-Frontend chạy tại: **http://localhost:5173**
+Frontend runs at: **http://localhost:5173**
 
-### 5. Đăng Nhập
+### 6. Login
 
-Truy cập: http://localhost:5173
+Access: http://localhost:5173
 
-**Tài khoản Admin:**
+**Admin Account:**
 - Username: `admin`
 - Password: `password123`
 
-**Tài khoản User:**
+**User Account:**
 - Username: `testuser`
 - Password: `password123`
 
-## 📁 Cấu Trúc Project
+## 📁 Project Structure
 
 ```
 gearflow/
-├── backend/                 # Spring Boot API
+├── backend/                    # Spring Boot API
 │   ├── src/
 │   │   ├── main/java/com/gearflow/
-│   │   │   ├── config/     # Cấu hình
-│   │   │   ├── controller/ # REST Controllers
-│   │   │   ├── dto/        # Data Transfer Objects
-│   │   │   ├── entity/     # JPA Entities
-│   │   │   ├── repository/ # Repositories
-│   │   │   └── service/    # Business Logic
+│   │   │   ├── config/        # Configuration
+│   │   │   ├── controller/    # REST Controllers
+│   │   │   ├── dto/           # Data Transfer Objects
+│   │   │   ├── entity/        # JPA Entities
+│   │   │   ├── repository/    # Repositories
+│   │   │   └── service/       # Business Logic
 │   │   └── resources/
-│   │       ├── db/migration/ # Flyway migrations
+│   │       ├── db/migration/  # Flyway migrations
+│   │       │   └── V1__Complete_Schema.sql  # Single consolidated migration
 │   │       └── application.yml
+│   ├── test-complete.bat      # Windows API test script
+│   ├── test-complete.sh       # Linux/Mac API test script
+│   ├── reset-database.bat     # Windows DB reset script
+│   ├── reset-database.sh      # Linux/Mac DB reset script
 │   ├── pom.xml
 │   └── README.md
 │
-├── frontend/               # React Application
+├── frontend/                  # React Application
 │   ├── src/
 │   │   └── app/
-│   │       ├── components/ # React Components
-│   │       ├── services/   # API Services
-│   │       └── routes.tsx  # Routes
+│   │       ├── components/    # React Components
+│   │       ├── services/      # API Services
+│   │       ├── context/       # Context providers
+│   │       └── routes.tsx     # Routes
 │   ├── package.json
 │   └── README.md
 │
-├── README.md              # File này
-├── QUICK_START.md         # Hướng dẫn khởi động nhanh
-├── HUONG_DAN_SU_DUNG.md   # Hướng dẫn sử dụng (Tiếng Việt)
-├── ADMIN_PAGES_STATUS.md  # Trạng thái dự án
-└── TESTING_CHECKLIST.md   # Danh sách kiểm tra
+├── docs/                      # Documentation
+│   ├── PROJECT_STATUS.md      # Project status
+│   ├── QUICK_START.md         # Quick start guide
+│   ├── TESTING_GUIDE.md       # Testing guide
+│   ├── BACKEND_REFACTOR.md    # Backend refactoring details
+│   └── FLYWAY_MIGRATION.md    # Migration guide
+│
+└── README.md                  # This file
 ```
 
-## ✨ Tính Năng
+## ✨ Features
 
-### Khách Hàng
+### Customer Features
 
-- ✅ Xem danh sách sản phẩm với phân trang
-- ✅ Tìm kiếm và lọc sản phẩm
-- ✅ Xem chi tiết sản phẩm
-- ✅ Thêm vào giỏ hàng
-- ✅ Quản lý giỏ hàng
-- ✅ Đặt hàng
-- ✅ Xem lịch sử đơn hàng
-- ✅ Đánh giá sản phẩm
-- ✅ Danh sách yêu thích (Wishlist)
+- ✅ Browse products with pagination
+- ✅ Search and filter products
+- ✅ View product details
+- ✅ Add to cart
+- ✅ Manage shopping cart
+- ✅ Place orders
+- ✅ View order history
+- ✅ Review products
+- ✅ Wishlist management
 
-### Admin
+### Admin Features
 
-- ✅ **Dashboard** - Thống kê tổng quan (doanh thu, đơn hàng, sản phẩm, người dùng)
-- ✅ **Quản lý sản phẩm** - CRUD sản phẩm, tìm kiếm, lọc
-- ✅ **Quản lý đơn hàng** - Xem, cập nhật trạng thái đơn hàng
-- ✅ **Quản lý khách hàng** - Xem, thay đổi vai trò, xóa người dùng
-- ✅ **Quản lý kho hàng** - Xem tồn kho, cập nhật số lượng, cảnh báo sắp hết hàng
+- ✅ **Dashboard** - Overview statistics (revenue, orders, products, users)
+- ✅ **Product Management** - CRUD operations, search, filter
+- ✅ **Order Management** - View, update order status
+- ✅ **Customer Management** - View, change roles, delete users
+- ✅ **Inventory Management** - View stock, update quantities, low stock alerts
 
-## 📊 Dữ Liệu Mẫu
+## 📊 Sample Data
 
-Hệ thống đã có sẵn 5 sản phẩm mẫu:
+The system includes 5 sample products:
 
-1. **Keychron K2 V2** - $89.00 (3 biến thể)
-2. **Ducky One 2 Mini** - $119.00 (3 biến thể)
-3. **Leopold FC660M** - $129.00 (2 biến thể)
-4. **Varmilo VA87M** - $149.00 (2 biến thể)
-5. **Keychron K8** - $99.00 (2 biến thể)
+1. **Keychron K2 V2** - $89.00 (3 variants)
+2. **Ducky One 2 Mini** - $119.00 (3 variants)
+3. **Leopold FC660M** - $129.00 (2 variants)
+4. **Varmilo VA87M** - $149.00 (2 variants)
+5. **Keychron K8** - $99.00 (2 variants)
 
-Tổng cộng: 12 biến thể với dữ liệu tồn kho đầy đủ.
+Total: 12 variants with complete stock data.
 
-## 🎯 Các Trang Admin
+## 🎯 Admin Pages
 
-| Trang | URL | Chức Năng |
-|-------|-----|-----------|
-| Dashboard | `/admin` | Thống kê tổng quan, đơn hàng gần đây, cảnh báo tồn kho |
-| Sản Phẩm | `/admin/products` | Thêm, sửa, xóa sản phẩm |
-| Đơn Hàng | `/admin/orders` | Xem và cập nhật trạng thái đơn hàng |
-| Khách Hàng | `/admin/customers` | Quản lý người dùng, thay đổi vai trò |
-| Kho Hàng | `/admin/inventory` | Xem và cập nhật tồn kho |
+| Page | URL | Features |
+|------|-----|----------|
+| Dashboard | `/admin` | Overview stats, recent orders, stock alerts |
+| Products | `/admin/products` | Add, edit, delete products |
+| Orders | `/admin/orders` | View and update order status |
+| Customers | `/admin/customers` | Manage users, change roles |
+| Inventory | `/admin/inventory` | View and update stock levels |
 
 ## 🔐 Authentication & Authorization
 
@@ -224,60 +244,113 @@ Xem chi tiết: `backend/README.md`
 
 ### PostgreSQL Schema
 
-- **users** - Người dùng
-- **products** - Sản phẩm
-- **product_variants** - Biến thể (màu, switch, keycap)
-- **stock** - Tồn kho
-- **categories** - Danh mục
-- **brands** - Thương hiệu
-- **orders** - Đơn hàng
-- **order_items** - Chi tiết đơn hàng
-- **carts** - Giỏ hàng
-- **cart_items** - Sản phẩm trong giỏ
-- **payment** - Thanh toán
-- **reviews** - Đánh giá
-- **wishlists** - Yêu thích
-- **notifications** - Thông báo
-- **coupons** - Mã giảm giá
+**15 Tables with Complete Relationships:**
 
-### Migrations
+- **users** - User accounts with roles
+- **categories** - Product categories
+- **brands** - Product brands
+- **products** - Main product information
+- **product_variants** - Product variants (color, switch, keycap, connection)
+- **product_attributes** - Product specifications
+- **stock** - Inventory management
+- **carts** - Shopping carts
+- **cart_items** - Cart items
+- **orders** - Customer orders
+- **order_items** - Order details
+- **payment** - Payment transactions
+- **reviews** - Product reviews
+- **wishlists** - User wishlists
+- **notifications** - System notifications
+- **coupons** - Discount coupons
+- **product_views** - Product view tracking
 
-| Version | Mô Tả |
-|---------|-------|
-| V1 | Initial Schema |
-| V2 | Cart Tables |
-| V3 | Sample Data (products, variants, stock) |
-| V4 | Coupons & Notifications |
-| V5 | Payment Table Fix |
+### Database Migration
 
-## 🐛 Xử Lý Lỗi
+**✨ NEW: Single Consolidated Migration**
 
-### Backend không khởi động
+All database schema, indexes, and sample data are now in one file:
+- `V1__Complete_Schema.sql` - Complete database setup
 
+**Benefits:**
+- ✅ No more migration conflicts
+- ✅ Clean migration history
+- ✅ Easier to understand
+- ✅ Includes sample data
+- ✅ Comprehensive indexes
+- ✅ Proper constraints
+
+**Sample Data Included:**
+- 2 users (admin, testuser)
+- 3 categories
+- 4 brands
+- 5 products with VND pricing
+- 12 product variants
+- Stock data for all variants
+- Product attributes
+- 2 sample coupons
+
+## 🐛 Troubleshooting
+
+### Backend won't start
+
+**Solution 1: Reset Database**
 ```bash
 cd backend
-mvn flyway:repair
+# Windows
+reset-database.bat
+
+# Linux/Mac
+chmod +x reset-database.sh
+./reset-database.sh
+```
+
+**Solution 2: Clean Build**
+```bash
+cd backend
+mvn clean install
 mvn spring-boot:run
 ```
 
-### Frontend không kết nối API
+### Frontend can't connect to API
 
-- Kiểm tra backend đang chạy trên port 8080
-- Kiểm tra CORS trong `backend/src/main/resources/application.yml`
+- ✅ Check backend is running on port 8080
+- ✅ Check CORS in `backend/src/main/resources/application.yml`
+- ✅ Check `VITE_API_BASE_URL` in frontend `.env`
 
 ### Database connection error
 
 ```sql
--- Tạo database nếu chưa có
+-- Create database if not exists
 CREATE DATABASE gearflow;
 
--- Kiểm tra user có quyền
+-- Grant permissions
 GRANT ALL PRIVILEGES ON DATABASE gearflow TO postgres;
 ```
 
+### Flyway migration issues
+
+```bash
+cd backend
+# Clean all migrations and start fresh
+mvn flyway:clean
+mvn flyway:migrate
+```
+
+### Stock update not working
+
+- ✅ Make sure you're logged in as admin
+- ✅ Check variant ID is correct (not product ID)
+- ✅ Check backend logs for errors
+
+### Wishlist not working
+
+- ✅ Make sure you're logged in
+- ✅ Use product ID (not variant ID)
+- ✅ Check backend logs for errors
+
 ### Redis connection error
 
-Redis là tùy chọn. Nếu không dùng, comment config trong `application.yml`:
+Redis is optional. If not using, comment config in `application.yml`:
 
 ```yaml
 # spring:
@@ -287,7 +360,34 @@ Redis là tùy chọn. Nếu không dùng, comment config trong `application.yml
 
 ## 🧪 Testing
 
-### Backend Tests
+### Automated API Testing
+
+**Windows:**
+```bash
+cd backend
+test-complete.bat
+```
+
+**Linux/Mac:**
+```bash
+cd backend
+chmod +x test-complete.sh
+./test-complete.sh
+```
+
+**Tests Include:**
+- ✅ Health check
+- ✅ Admin login
+- ✅ User login
+- ✅ Get products
+- ✅ Get product details
+- ✅ Get categories
+- ✅ Get brands
+- ✅ Add to wishlist
+- ✅ Get wishlist
+- ✅ Update stock
+
+### Backend Unit Tests
 
 ```bash
 cd backend
@@ -303,17 +403,17 @@ npm run test
 
 ### Manual Testing
 
-Xem chi tiết: `TESTING_CHECKLIST.md`
+Xem chi tiết: `docs/TESTING_GUIDE.md`
 
-## 📚 Tài Liệu
+## 📚 Documentation
 
-- **QUICK_START.md** - Hướng dẫn khởi động nhanh
-- **HUONG_DAN_SU_DUNG.md** - Hướng dẫn sử dụng chi tiết (Tiếng Việt)
-- **ADMIN_PAGES_STATUS.md** - Trạng thái và tính năng đã hoàn thành
-- **TESTING_CHECKLIST.md** - Danh sách kiểm tra đầy đủ
-- **backend/README.md** - Tài liệu Backend API
-- **frontend/README.md** - Tài liệu Frontend
-- **backend/FLYWAY_REPAIR.md** - Hướng dẫn sửa lỗi Flyway
+- **docs/QUICK_START.md** - Quick start guide
+- **docs/PROJECT_STATUS.md** - Project status and completed features
+- **docs/TESTING_GUIDE.md** - Complete testing checklist
+- **docs/BACKEND_REFACTOR.md** - ✨ Backend refactoring & clean code improvements
+- **docs/FLYWAY_MIGRATION.md** - Flyway migration guide
+- **backend/README.md** - Backend API documentation
+- **frontend/README.md** - Frontend documentation
 
 ## 🚀 Production Deployment
 
@@ -375,25 +475,23 @@ VITE_API_BASE_URL=https://api.yourdomain.com/api
 - ✅ Toast notifications
 - ✅ Smooth animations
 
-## 🔄 Workflow
+## 🔄 Customer Workflow
 
-### Khách Hàng
-
-1. Đăng ký/Đăng nhập
-2. Duyệt sản phẩm
-3. Thêm vào giỏ hàng
+1. Register/Login
+2. Browse products
+3. Add to cart
 4. Checkout
-5. Theo dõi đơn hàng
-6. Đánh giá sản phẩm
+5. Track orders
+6. Review products
 
-### Admin
+### Admin Workflow
 
-1. Đăng nhập với tài khoản admin
-2. Xem dashboard thống kê
-3. Quản lý sản phẩm (thêm/sửa/xóa)
-4. Xử lý đơn hàng (cập nhật trạng thái)
-5. Quản lý khách hàng
-6. Cập nhật tồn kho
+1. Login with admin account
+2. View dashboard statistics
+3. Manage products (add/edit/delete)
+4. Process orders (update status)
+5. Manage customers
+6. Update inventory
 
 ## 🤝 Contributing
 
@@ -404,6 +502,31 @@ VITE_API_BASE_URL=https://api.yourdomain.com/api
 5. Open a Pull Request
 
 ## 📝 Changelog
+
+### Version 1.1.0 (2026-04-01) - Backend Refactor
+
+**🎉 Major Backend Improvements:**
+- ✅ Consolidated all migrations into single file
+- ✅ Improved service layer with better error handling
+- ✅ Added comprehensive logging to all controllers
+- ✅ Fixed stock update functionality
+- ✅ Fixed wishlist functionality
+- ✅ Added database reset scripts
+- ✅ Added automated API test scripts
+- ✅ Clean code refactoring
+- ✅ Better exception handling
+- ✅ Comprehensive documentation
+
+**Database:**
+- ✅ Single migration file with all schema
+- ✅ Proper constraints and indexes
+- ✅ Sample data included
+- ✅ VND pricing format
+
+**Testing:**
+- ✅ Automated test scripts (Windows & Linux)
+- ✅ Database reset scripts
+- ✅ Complete API testing
 
 ### Version 1.0.0 (2026-03-31)
 
@@ -435,14 +558,14 @@ GearFlow Development Team
 
 ## 📞 Support
 
-Nếu gặp vấn đề:
+If you encounter issues:
 
-1. Kiểm tra tài liệu trong thư mục docs
-2. Xem logs:
+1. Check documentation in docs folder
+2. View logs:
    - Backend: `backend/logs/gearflow.log`
    - Frontend: Browser console (F12)
-3. Kiểm tra `TESTING_CHECKLIST.md`
-4. Tạo issue trên GitHub
+3. Check `docs/TESTING_GUIDE.md`
+4. Create an issue on GitHub
 
 ## 🎯 Roadmap
 

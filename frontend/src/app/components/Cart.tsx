@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
-import { apiService, CartDTO } from "../services/api";
+import { cartApi } from "../services/api";
+import type { CartDTO } from "../types";
 import { toast } from "sonner";
 
 export function Cart() {
@@ -17,7 +18,7 @@ export function Cart() {
 
   const loadCart = async () => {
     try {
-      const data = await apiService.getCart();
+      const data = await cartApi.getCart();
       setCart(data);
     } catch (error) {
       console.error('Error loading cart:', error);
@@ -31,7 +32,7 @@ export function Cart() {
     if (newQuantity < 1) return;
     
     try {
-      const updatedCart = await apiService.updateCartItem(variantId, newQuantity);
+      const updatedCart = await cartApi.updateCartItem(variantId, newQuantity);
       setCart(updatedCart);
       toast.success('Đã cập nhật số lượng');
     } catch (error) {
@@ -41,7 +42,7 @@ export function Cart() {
 
   const removeItem = async (variantId: string) => {
     try {
-      const updatedCart = await apiService.removeFromCart(variantId);
+      const updatedCart = await cartApi.removeFromCart(variantId);
       setCart(updatedCart);
       toast.success('Đã xóa sản phẩm khỏi giỏ hàng');
     } catch (error) {
@@ -92,21 +93,43 @@ export function Cart() {
             <Card key={item.variantId}>
               <CardContent className="p-6">
                 <div className="flex gap-4">
+                  {/* Product Image */}
                   <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      <ShoppingBag className="w-8 h-8" />
-                    </div>
+                    {item.imageUrl ? (
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.productName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <ShoppingBag className="w-8 h-8" />
+                      </div>
+                    )}
                   </div>
 
+                  {/* Product Info */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-lg mb-1">
-                      Sản phẩm #{item.variantId.substring(0, 8)}
+                      {item.productName}
                     </h3>
-                    <p className="text-lg font-bold text-blue-600 mt-2">
+                    {item.variantDetails && (
+                      <p className="text-sm text-gray-600 mb-1">
+                        {item.variantDetails}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-400 mb-2">
+                      Mã: #{item.variantId.substring(0, 8)}
+                    </p>
+                    <p className="text-lg font-bold text-blue-600">
                       {item.price.toLocaleString('vi-VN')}đ
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Tổng: {item.subtotal.toLocaleString('vi-VN')}đ
                     </p>
                   </div>
 
+                  {/* Actions */}
                   <div className="flex flex-col items-end justify-between">
                     <Button
                       variant="ghost"

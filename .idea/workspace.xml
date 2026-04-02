@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="877f65d0-8002-4551-a6a8-dd5117c5c9d7" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/GearFlow.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/FLYWAY_REPAIR.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/backend/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/AdminController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/AdminController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/OrderController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/OrderController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/OrderManagementController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/OrderManagementController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/PaymentController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/PaymentController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/UserController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/UserController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/WishlistController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/controller/WishlistController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/CartItemDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/CartItemDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/OrderDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/OrderDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/OrderItemDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/OrderItemDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/ProductAttributeDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/ProductAttributeDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/ProductVariantDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/ProductVariantDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/UserDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/UserDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/WishlistDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/dto/WishlistDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/entity/Order.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/entity/Order.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/entity/OrderItem.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/entity/OrderItem.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/entity/Payment.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/entity/Payment.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/entity/ProductAttribute.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/entity/ProductAttribute.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/entity/User.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/entity/User.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/exception/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/exception/GlobalExceptionHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/repository/ProductRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/repository/ProductRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/AdminService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/AdminService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/CartService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/CartService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/CategoryService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/CategoryService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/OrderManagementService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/OrderManagementService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/OrderService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/OrderService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/PaymentService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/PaymentService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/ProductService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/ProductService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/UserService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/WishlistService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/gearflow/service/WishlistService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/db/migration/V1__Initial_Schema.sql" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/db/migration/V2__Add_Cart_Tables.sql" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/db/migration/V3__Insert_Sample_Data.sql" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/db/migration/V4__Add_Coupons_And_Notifications.sql" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/db/migration/V5__Fix_Payment_Table.sql" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/AdminCustomers.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/AdminCustomers.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/AdminInventory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/AdminInventory.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/AdminNav.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/AdminNav.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/AdminOrders.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/AdminOrders.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/AdminProducts.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/AdminProducts.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/Cart.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/Cart.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/Checkout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/Checkout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/Login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/Login.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/OrderHistory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/OrderHistory.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/ProductDetail.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/ProductDetail.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/Register.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/Register.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/Shop.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/Shop.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/UserProfile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/UserProfile.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/ui/tabs.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/ui/tabs.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/ui/textarea.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/ui/textarea.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/context/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/context/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/routes.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/routes.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/services/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/services/api.ts" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
+  <component name="ProjectId" id="3B67dAYC4DsRRfDSUBr4SWJhwHU" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Application.GearFlowApplication.executor&quot;: &quot;Run&quot;,
+    &quot;Maven.gearflow-api [clean].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.gearflow-api [deploy].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.gearflow-api [install].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.gearflow-api [package].executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
+    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
+    &quot;RequestMappingsPanelWidth0&quot;: &quot;75&quot;,
+    &quot;RequestMappingsPanelWidth1&quot;: &quot;75&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;Spring Boot.GearFlowApplication.executor&quot;: &quot;Run&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Git/Project/GearFlow&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;SDKs&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;reference.projectsettings.compiler.annotationProcessors&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RunManager">
+    <configuration name="GearFlowApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UpdateClassesAndResources" />
+      <module name="gearflow-api" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.gearflow.GearFlowApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-fbdcb00ec9e3-intellij.indexing.shared.core-IU-251.25410.129" />
+        <option value="bundled-js-predefined-d6986cc7102b-6a121458b545-JavaScript-IU-251.25410.129" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="877f65d0-8002-4551-a6a8-dd5117c5c9d7" name="Changes" comment="" />
+      <created>1773797751072</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1773797751072</updated>
+      <workItem from="1773797752001" duration="2789000" />
+      <workItem from="1774152146108" duration="6094000" />
+      <workItem from="1774232833181" duration="2349000" />
+      <workItem from="1774404597296" duration="1706000" />
+      <workItem from="1774491572305" duration="9042000" />
+      <workItem from="1774787510496" duration="3129000" />
+      <workItem from="1774835136875" duration="7760000" />
+      <workItem from="1774913920990" duration="3917000" />
+      <workItem from="1774926470289" duration="26134000" />
+      <workItem from="1775000857877" duration="13652000" />
+      <workItem from="1775031700505" duration="727000" />
+      <workItem from="1775032462977" duration="2777000" />
+      <workItem from="1775036157265" duration="1348000" />
+      <workItem from="1775087948878" duration="26035000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

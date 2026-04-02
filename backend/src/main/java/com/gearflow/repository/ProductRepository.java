@@ -20,6 +20,25 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     
     List<Product> findByBrandId(String brandId);
     
+    // For recommendations
+    List<Product> findByBrandIdAndIdNot(String brandId, String excludeId, Pageable pageable);
+    
+    List<Product> findByCategoryIdAndIdNot(String categoryId, String excludeId, Pageable pageable);
+    
+    @Query("SELECT p FROM Product p WHERE p.categoryId = :categoryId AND p.id <> :excludeId AND p.brandId <> :excludeBrandId")
+    List<Product> findByCategoryIdAndIdNotAndBrandIdNot(
+        @Param("categoryId") String categoryId,
+        @Param("excludeId") String excludeId,
+        @Param("excludeBrandId") String excludeBrandId,
+        Pageable pageable
+    );
+    
+    @Query("SELECT p FROM Product p WHERE p.id NOT IN :excludeIds ORDER BY RANDOM()")
+    List<Product> findRandomProductsExcluding(@Param("excludeIds") List<String> excludeIds, Pageable pageable);
+    
+    @Query("SELECT p FROM Product p ORDER BY RANDOM()")
+    List<Product> findRandomProducts(Pageable pageable);
+    
     @Query("SELECT p FROM Product p WHERE " +
            "(:categoryId IS NULL OR p.categoryId = :categoryId) AND " +
            "(:brandId IS NULL OR p.brandId = :brandId) AND " +

@@ -1,37 +1,37 @@
 # GearFlow Backend API
 
-Backend API cho hệ thống thương mại điện tử bàn phím cơ GearFlow.
+Backend API for GearFlow mechanical keyboard e-commerce system.
 
-## 🛠️ Công Nghệ Sử Dụng
+## 🛠️ Technology Stack
 
 - **Java 17**
 - **Spring Boot 3.x**
-- **PostgreSQL** - Database chính
-- **Redis** - Cache (tùy chọn)
+- **PostgreSQL** - Primary database
+- **Redis** - Cache (optional)
 - **Flyway** - Database migration
 - **Spring Security** - Authentication & Authorization
 - **JWT** - Token-based authentication
 - **Maven** - Build tool
-- **Lombok** - Giảm boilerplate code
+- **Lombok** - Reduce boilerplate code
 
-## 📋 Yêu Cầu Hệ Thống
+## 📋 System Requirements
 
-- Java 17 hoặc cao hơn
+- Java 17 or higher
 - Maven 3.6+
 - PostgreSQL 12+
-- Redis 6+ (tùy chọn, cho caching)
+- Redis 6+ (optional, for caching)
 
-## 🚀 Cài Đặt và Chạy
+## 🚀 Installation and Setup
 
-### 1. Chuẩn Bị Database
+### 1. Setup Database
 
-Tạo database PostgreSQL:
+Create PostgreSQL database:
 
 ```sql
 CREATE DATABASE gearflow;
 ```
 
-Cấu hình database trong `src/main/resources/application.yml`:
+Configure database in `src/main/resources/application.yml`:
 
 ```yaml
 spring:
@@ -41,43 +41,43 @@ spring:
     password: 123456
 ```
 
-### 2. Cài Đặt Dependencies
+### 2. Install Dependencies
 
 ```bash
 mvn clean install
 ```
 
-### 3. Chạy Flyway Migration (Nếu Cần Sửa Lỗi)
+### 3. Run Flyway Migration (If Needed)
 
-Nếu gặp lỗi migration V6, chạy lệnh repair:
+If you encounter V6 migration error, run repair:
 
 ```bash
 mvn flyway:repair
 ```
 
-### 4. Khởi Động Application
+### 4. Start Application
 
 ```bash
 mvn spring-boot:run
 ```
 
-Hoặc build và chạy JAR file:
+Or build and run JAR file:
 
 ```bash
 mvn clean package
 java -jar target/gearflow-api-1.0.0.jar
 ```
 
-Server sẽ chạy tại: **http://localhost:8080**
+Server runs at: **http://localhost:8080**
 
 API endpoints: **http://localhost:8080/api**
 
-## 📁 Cấu Trúc Thư Mục
+## 📁 Project Structure
 
 ```
 backend/
 ├── src/main/java/com/gearflow/
-│   ├── config/          # Cấu hình (Security, CORS, Cache, Redis)
+│   ├── config/          # Configuration (Security, CORS, Cache, Redis)
 │   ├── controller/      # REST Controllers
 │   ├── dto/            # Data Transfer Objects
 │   ├── entity/         # JPA Entities
@@ -87,27 +87,27 @@ backend/
 │   └── util/           # Utility classes
 ├── src/main/resources/
 │   ├── db/migration/   # Flyway migrations
-│   └── application.yml # Cấu hình ứng dụng
+│   └── application.yml # Application configuration
 └── pom.xml            # Maven dependencies
 ```
 
 ## 🗄️ Database Migrations
 
-| Version | Mô Tả | Trạng Thái |
-|---------|-------|-----------|
+| Version | Description | Status |
+|---------|-------------|--------|
 | V1 | Initial Schema (users, products, orders, etc.) | ✅ |
 | V2 | Add Cart Tables | ✅ |
 | V3 | Insert Sample Data (5 products, 12 variants, stock) | ✅ |
 | V4 | Add Coupons And Notifications | ✅ |
 | V5 | Fix Payment Table | ✅ |
 
-**Lưu ý:** V6 đã bị xóa vì trùng lặp với V3.
+**Note:** V6 was deleted as it was redundant with V3.
 
 ## 🔐 Authentication
 
-API sử dụng JWT authentication. Để truy cập các endpoint được bảo vệ:
+API uses JWT authentication. To access protected endpoints:
 
-1. **Đăng nhập** để lấy token:
+1. **Login** to get token:
 ```bash
 POST /api/auth/login
 {
@@ -116,84 +116,84 @@ POST /api/auth/login
 }
 ```
 
-2. **Sử dụng token** trong header:
+2. **Use token** in header:
 ```bash
 Authorization: Bearer <your_token_here>
 ```
 
-### Tài Khoản Mặc Định
+### Default Accounts
 
 - **Admin:** username: `admin`, password: `password123`
 - **User:** username: `testuser`, password: `password123`
 
 ## 📡 API Endpoints
 
-### Public Endpoints (Không cần authentication)
+### Public Endpoints (No authentication required)
 
 ```
-GET  /api/products              # Danh sách sản phẩm
-GET  /api/products/{id}         # Chi tiết sản phẩm
-GET  /api/products/search       # Tìm kiếm sản phẩm
-GET  /api/categories            # Danh sách danh mục
-GET  /api/brands                # Danh sách thương hiệu
-POST /api/auth/register         # Đăng ký
-POST /api/auth/login            # Đăng nhập
+GET  /api/products              # Product list
+GET  /api/products/{id}         # Product details
+GET  /api/products/search       # Search products
+GET  /api/categories            # Category list
+GET  /api/brands                # Brand list
+POST /api/auth/register         # Register
+POST /api/auth/login            # Login
 POST /api/auth/refresh          # Refresh token
 ```
 
-### User Endpoints (Cần authentication)
+### User Endpoints (Authentication required)
 
 ```
-GET    /api/cart                # Giỏ hàng
-POST   /api/cart/items          # Thêm vào giỏ
-PUT    /api/cart/items/{id}     # Cập nhật số lượng
-DELETE /api/cart/items/{id}     # Xóa khỏi giỏ
+GET    /api/cart                # Shopping cart
+POST   /api/cart/items          # Add to cart
+PUT    /api/cart/items/{id}     # Update quantity
+DELETE /api/cart/items/{id}     # Remove from cart
 
-GET    /api/orders              # Đơn hàng của user
-POST   /api/orders              # Tạo đơn hàng
-GET    /api/orders/{id}         # Chi tiết đơn hàng
-POST   /api/orders/{id}/cancel  # Hủy đơn hàng
+GET    /api/orders              # User orders
+POST   /api/orders              # Create order
+GET    /api/orders/{id}         # Order details
+POST   /api/orders/{id}/cancel  # Cancel order
 
-GET    /api/wishlist            # Danh sách yêu thích
-POST   /api/wishlist/{id}       # Thêm vào wishlist
-DELETE /api/wishlist/{id}       # Xóa khỏi wishlist
+GET    /api/wishlist            # Wishlist
+POST   /api/wishlist/{id}       # Add to wishlist
+DELETE /api/wishlist/{id}       # Remove from wishlist
 
-POST   /api/reviews             # Tạo đánh giá
-GET    /api/reviews/product/{id} # Đánh giá sản phẩm
+POST   /api/reviews             # Create review
+GET    /api/reviews/product/{id} # Product reviews
 ```
 
-### Admin Endpoints (Cần role ADMIN)
+### Admin Endpoints (ADMIN role required)
 
 ```
 # Dashboard
-GET  /api/admin/dashboard/stats        # Thống kê tổng quan
-GET  /api/admin/dashboard/top-products # Top sản phẩm
-GET  /api/admin/dashboard/sales-report # Báo cáo doanh thu
+GET  /api/admin/dashboard/stats        # Overview statistics
+GET  /api/admin/dashboard/top-products # Top products
+GET  /api/admin/dashboard/sales-report # Sales report
 
 # Product Management
-GET    /api/admin/products             # Danh sách sản phẩm
-POST   /api/admin/products             # Tạo sản phẩm
-PUT    /api/admin/products/{id}        # Cập nhật sản phẩm
-DELETE /api/admin/products/{id}        # Xóa sản phẩm
+GET    /api/admin/products             # Product list
+POST   /api/admin/products             # Create product
+PUT    /api/admin/products/{id}        # Update product
+DELETE /api/admin/products/{id}        # Delete product
 
 # Order Management
-GET  /api/admin/orders                 # Tất cả đơn hàng
-PUT  /api/admin/orders/{id}/status     # Cập nhật trạng thái
+GET  /api/admin/orders                 # All orders
+PUT  /api/admin/orders/{id}/status     # Update status
 
 # User Management
-GET    /api/admin/users                # Danh sách người dùng
-GET    /api/admin/users/{id}           # Chi tiết người dùng
-PUT    /api/admin/users/{id}/role      # Thay đổi vai trò
-DELETE /api/admin/users/{id}           # Xóa người dùng
+GET    /api/admin/users                # User list
+GET    /api/admin/users/{id}           # User details
+PUT    /api/admin/users/{id}/role      # Change role
+DELETE /api/admin/users/{id}           # Delete user
 
 # Stock Management
-GET  /api/admin/stock                  # Danh sách tồn kho
-GET  /api/admin/stock/{variantId}      # Chi tiết tồn kho
-PUT  /api/admin/stock/{variantId}      # Cập nhật tồn kho
-GET  /api/admin/stock/low-stock        # Sản phẩm sắp hết
+GET  /api/admin/stock                  # Stock list
+GET  /api/admin/stock/{variantId}      # Stock details
+PUT  /api/admin/stock/{variantId}      # Update stock
+GET  /api/admin/stock/low-stock        # Low stock items
 ```
 
-## ⚙️ Cấu Hình
+## ⚙️ Configuration
 
 ### Application Properties
 
@@ -232,12 +232,12 @@ app:
 
 ### CORS Configuration
 
-CORS được cấu hình để cho phép frontend truy cập:
+CORS is configured to allow frontend access:
 - http://localhost:3000
 - http://localhost:3001
 - http://localhost:5173
 
-Để thêm origin khác, cập nhật `application.yml`:
+To add more origins, update `application.yml`:
 
 ```yaml
 app:
@@ -245,9 +245,9 @@ app:
     allowed-origins: http://localhost:3000,http://your-domain.com
 ```
 
-### Redis Cache (Tùy chọn)
+### Redis Cache (Optional)
 
-Nếu không sử dụng Redis, comment các dòng sau trong `application.yml`:
+If not using Redis, comment out these lines in `application.yml`:
 
 ```yaml
 # spring:
@@ -261,17 +261,13 @@ Nếu không sử dụng Redis, comment các dòng sau trong `application.yml`:
 
 ## 🧪 Testing
 
-### Chạy Tests
+### Run Tests
 
 ```bash
 mvn test
 ```
 
-### Test với Postman
-
-Import collection từ `postman/GearFlow.postman_collection.json` (nếu có)
-
-### Test với cURL
+### Test with cURL
 
 ```bash
 # Login
@@ -287,31 +283,31 @@ curl http://localhost:8080/api/admin/dashboard/stats \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-## 🐛 Xử Lý Lỗi
+## 🐛 Troubleshooting
 
-### Lỗi: Flyway migration failed
+### Error: Flyway migration failed
 
 ```bash
 mvn flyway:repair
 mvn spring-boot:run
 ```
 
-Xem chi tiết: `FLYWAY_REPAIR.md`
+See details: `../docs/FLYWAY_MIGRATION.md`
 
-### Lỗi: Database connection refused
+### Error: Database connection refused
 
-- Kiểm tra PostgreSQL đang chạy
-- Kiểm tra username/password trong `application.yml`
-- Kiểm tra database `gearflow` đã được tạo
+- Check PostgreSQL is running
+- Check username/password in `application.yml`
+- Check database `gearflow` exists
 
-### Lỗi: Redis connection refused
+### Error: Redis connection refused
 
-- Redis là tùy chọn, có thể comment config Redis
-- Hoặc cài đặt và chạy Redis: `redis-server`
+- Redis is optional, can comment out Redis config
+- Or install and run Redis: `redis-server`
 
-### Lỗi: Port 8080 already in use
+### Error: Port 8080 already in use
 
-Thay đổi port trong `application.yml`:
+Change port in `application.yml`:
 
 ```yaml
 server:
@@ -322,26 +318,26 @@ server:
 
 ### Core Tables
 
-- **users** - Người dùng (admin, customer)
-- **products** - Sản phẩm
-- **product_variants** - Biến thể sản phẩm (màu, switch, keycap)
-- **stock** - Tồn kho
-- **categories** - Danh mục
-- **brands** - Thương hiệu
-- **orders** - Đơn hàng
-- **order_items** - Chi tiết đơn hàng
-- **carts** - Giỏ hàng
-- **cart_items** - Sản phẩm trong giỏ
-- **payment** - Thanh toán
-- **reviews** - Đánh giá
-- **wishlists** - Danh sách yêu thích
-- **notifications** - Thông báo
-- **coupons** - Mã giảm giá
+- **users** - User accounts (admin, customer)
+- **products** - Products
+- **product_variants** - Product variants (color, switch, keycap)
+- **stock** - Inventory
+- **categories** - Categories
+- **brands** - Brands
+- **orders** - Orders
+- **order_items** - Order details
+- **carts** - Shopping carts
+- **cart_items** - Cart items
+- **payment** - Payments
+- **reviews** - Product reviews
+- **wishlists** - Wishlists
+- **notifications** - Notifications
+- **coupons** - Discount coupons
 
 ## 🔒 Security
 
-- Passwords được hash với BCrypt
-- JWT tokens cho authentication
+- Passwords hashed with BCrypt
+- JWT tokens for authentication
 - Role-based access control (USER, ADMIN)
 - CORS protection
 - SQL injection protection (JPA/Hibernate)
@@ -349,9 +345,9 @@ server:
 
 ## 📝 Logging
 
-Logs được lưu tại: `logs/gearflow.log`
+Logs saved at: `logs/gearflow.log`
 
-Cấu hình log level trong `application.yml`:
+Configure log level in `application.yml`:
 
 ```yaml
 logging:
@@ -388,32 +384,13 @@ export JWT_SECRET=your-production-secret
 export REDIS_HOST=your-redis-host
 ```
 
-## 📚 Tài Liệu Tham Khảo
+## 📚 Documentation
 
 - [Spring Boot Documentation](https://spring.io/projects/spring-boot)
 - [Spring Security](https://spring.io/projects/spring-security)
 - [Flyway](https://flywaydb.org/documentation/)
 - [PostgreSQL](https://www.postgresql.org/docs/)
 
-## 🤝 Contributing
-
-1. Fork the project
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
-
 ## 📄 License
 
 This project is licensed under the MIT License.
-
-## 👥 Team
-
-GearFlow Development Team
-
-## 📞 Support
-
-Nếu gặp vấn đề, vui lòng:
-1. Kiểm tra logs trong `logs/gearflow.log`
-2. Xem `FLYWAY_REPAIR.md` nếu có lỗi migration
-3. Xem `ADMIN_PAGES_STATUS.md` để biết trạng thái dự án

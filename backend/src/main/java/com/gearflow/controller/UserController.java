@@ -17,13 +17,13 @@ public class UserController {
     private UserService userService;
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("isAuthenticated() and (#id == authentication.name or hasRole('ADMIN'))")
     public ResponseEntity<UserDTO> getUserProfile(@PathVariable String id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("isAuthenticated() and (#id == authentication.name or hasRole('ADMIN'))")
     public ResponseEntity<UserDTO> updateUserProfile(
         @PathVariable String id,
         @RequestBody UserDTO userDTO) {
@@ -31,7 +31,7 @@ public class UserController {
     }
 
     @PostMapping("/change-password")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request) {
         userService.changePassword(request.getOldPassword(), request.getNewPassword());
         return ResponseEntity.ok().build();

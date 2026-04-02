@@ -60,7 +60,7 @@ public class AdminController {
     public ResponseEntity<List<OrderDTO>> getOrdersByStatus(
             @RequestParam(required = false) Order.OrderStatus status) {
         log.info("GET /api/admin/orders - Status: {}", status);
-        List<OrderDTO> orders = adminService.getOrdersByStatus(status != null ? status : Order.OrderStatus.PENDING);
+        List<OrderDTO> orders = adminService.getOrdersByStatus(status);
         return ResponseEntity.ok(orders);
     }
 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useCallback, useEffect, useState } from 'react';
-import { AuthResponse, UserDTO, apiService } from '../services/api';
+import { authApi } from '../services/api';
+import { AuthResponse, UserDTO } from '../types';
 
 interface AuthContextType {
   user: UserDTO | null;
@@ -12,6 +13,7 @@ interface AuthContextType {
   register: (username: string, password: string, phone?: string) => Promise<void>;
   logout: () => void;
   refreshAccessToken: () => Promise<void>;
+  setUser: (user: UserDTO) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -54,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      const response = await apiService.login({ username, password });
+      const response = await authApi.login({ username, password });
       setAccessToken(response.accessToken);
       setRefreshToken(response.refreshToken);
       setUser(response.user);
@@ -76,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      const response = await apiService.register({ username, password, phone });
+      const response = await authApi.register({ username, password, phone });
       setAccessToken(response.accessToken);
       setRefreshToken(response.refreshToken);
       setUser(response.user);
@@ -111,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const response = await apiService.refreshToken(refreshToken);
+      const response = await authApi.refreshToken(refreshToken);
       setAccessToken(response.accessToken);
       setRefreshToken(response.refreshToken);
       setUser(response.user);
@@ -125,6 +127,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [refreshToken, logout]);
 
+  const updateUser = useCallback((updatedUser: UserDTO) => {
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  }, []);
+
   const value: AuthContextType = {
     user,
     accessToken,
@@ -136,6 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     refreshAccessToken,
+    setUser: updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

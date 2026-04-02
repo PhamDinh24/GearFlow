@@ -22,5 +22,6 @@ public class ProductVariantDTO {
     private BigDecimal priceModifier;
     private BigDecimal finalPrice;
     private Integer availableStock;
+    private Integer stock;
     private Boolean inStock;
 }

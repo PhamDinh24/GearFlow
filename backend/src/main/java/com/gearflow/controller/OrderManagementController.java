@@ -26,8 +26,21 @@ public class OrderManagementController {
     @PutMapping("/{orderId}/status")
     public ResponseEntity<OrderDTO> updateOrderStatus(
             @PathVariable String orderId,
-            @RequestParam Order.OrderStatus status) {
-        log.info("PUT /api/admin/orders/{}/status - Status: {}", orderId, status);
+            @RequestBody StatusUpdateRequest request) {
+        log.info("PUT /api/admin/orders/{}/status - Status: {}", orderId, request.getStatus());
+        Order.OrderStatus status = Order.OrderStatus.valueOf(request.getStatus());
         return ResponseEntity.ok(orderManagementService.updateOrderStatus(orderId, status));
+    }
+
+    public static class StatusUpdateRequest {
+        private String status;
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
     }
 }

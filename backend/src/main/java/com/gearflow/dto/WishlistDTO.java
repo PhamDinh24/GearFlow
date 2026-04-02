@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+import com.gearflow.dto.ProductDTO;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,4 +20,5 @@ public class WishlistDTO {
     private String productName;
     private Double price;
     private LocalDateTime addedAt;
+    private ProductDTO product;
 }

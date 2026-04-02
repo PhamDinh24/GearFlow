@@ -54,7 +54,7 @@ public class Payment {
     private LocalDateTime updatedAt;
 
     public enum PaymentMethod {
-        VNPAY, CREDIT_CARD, BANK_TRANSFER
+        VNPAY, COD, CREDIT_CARD, BANK_TRANSFER
     }
 
     public enum PaymentStatus {

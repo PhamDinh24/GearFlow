@@ -17,6 +17,15 @@ import java.time.LocalDateTime;
 @Slf4j
 public class OrderManagementService {
     private final OrderRepository orderRepository;
+    private final OrderService orderService;
+    private final StockService stockService;
+
+    public java.util.List<OrderDTO> getAllOrders() {
+        log.info("Fetching all orders");
+        return orderRepository.findAll().stream()
+                .map(orderService::toDTO)
+                .collect(java.util.stream.Collectors.toList());
+    }
 
     @Transactional
     public OrderDTO cancelOrder(String orderId) {
@@ -33,37 +42,46 @@ public class OrderManagementService {
             throw new BusinessException("Order is already cancelled");
         }
 
+        // Restore stock for cancelled order
+        for (var item : order.getItems()) {
+            stockService.incrementStock(item.getVariantId(), item.getQuantity());
+        }
+
         order.setStatus(Order.OrderStatus.CANCELLED);
         order.setUpdatedAt(LocalDateTime.now());
         
         Order updated = orderRepository.save(order);
         log.info("Order cancelled with id: {}", orderId);
-        return convertToDTO(updated);
+        return orderService.toDTO(updated);
     }
 
     @Transactional
     public OrderDTO updateOrderStatus(String orderId, Order.OrderStatus newStatus) {
         log.info("Updating order status for id: {} to: {}", orderId, newStatus);
         
+        if (orderId == null || orderId.trim().isEmpty()) {
+            throw new BusinessException("Order ID is required");
+        }
+        if (newStatus == null) {
+            throw new BusinessException("New status is required");
+        }
+        
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        // Validate status transition
+        if (order.getStatus() == Order.OrderStatus.DELIVERED) {
+            throw new BusinessException("Cannot change status of delivered order");
+        }
+        if (order.getStatus() == Order.OrderStatus.CANCELLED) {
+            throw new BusinessException("Cannot change status of cancelled order");
+        }
 
         order.setStatus(newStatus);
         order.setUpdatedAt(LocalDateTime.now());
         
         Order updated = orderRepository.save(order);
         log.info("Order status updated for id: {}", orderId);
-        return convertToDTO(updated);
-    }
-
-    private OrderDTO convertToDTO(Order order) {
-        return OrderDTO.builder()
-                .id(order.getId())
-                .userId(order.getUserId())
-                .status(order.getStatus().toString())
-                .totalAmount(order.getTotalAmount())
-                .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
-                .build();
+        return orderService.toDTO(updated);
     }
 }

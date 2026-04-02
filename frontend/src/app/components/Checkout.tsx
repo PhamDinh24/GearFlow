@@ -1,16 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
-import { CreditCard, Wallet, ArrowLeft } from "lucide-react";
+import { CreditCard, Wallet, ArrowLeft, Plus, MapPin } from "lucide-react";
+import { cartApi, orderApi, paymentApi, shippingApi } from "../services/api";
+import type { ShippingAddressDTO, CartDTO } from "../types";
+import { toast } from "sonner";
 
 export function Checkout() {
   const navigate = useNavigate();
   const [step, setStep] = useState<'address' | 'payment'>('address');
   const [paymentMethod, setPaymentMethod] = useState<'VNPAY' | 'COD'>('VNPAY');
+  const [cart, setCart] = useState<CartDTO | null>(null);
+  const [addresses, setAddresses] = useState<ShippingAddressDTO[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -22,26 +29,147 @@ export function Checkout() {
     ward: '',
   });
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [cartData, addressesData] = await Promise.all([
+        cartApi.getCart(),
+        shippingApi.getShippingAddresses()
+      ]);
+      
+      setCart(cartData);
+      setAddresses(addressesData);
+      
+      // Auto-select default address
+      const defaultAddress = addressesData.find(a => a.isDefault);
+      if (defaultAddress) {
+        setSelectedAddressId(defaultAddress.id!);
+        setFormData({
+          fullName: defaultAddress.fullName,
+          phone: defaultAddress.phone,
+          email: defaultAddress.email || '',
+          address: defaultAddress.address,
+          city: defaultAddress.city,
+          district: defaultAddress.district,
+          ward: defaultAddress.ward,
+        });
+      } else if (addressesData.length === 0) {
+        setShowNewAddressForm(true);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Không thể tải dữ liệu');
+    }
+  };
+
+  const handleSelectAddress = (address: ShippingAddressDTO) => {
+    setSelectedAddressId(address.id!);
+    setShowNewAddressForm(false);
+    setFormData({
+      fullName: address.fullName,
+      phone: address.phone,
+      email: address.email || '',
+      address: address.address,
+      city: address.city,
+      district: address.district,
+      ward: address.ward,
+    });
+  };
+
   const handleSubmitAddress = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!selectedAddressId && !showNewAddressForm) {
+      toast.error('Vui lòng chọn địa chỉ giao hàng');
+      return;
+    }
+    
     setStep('payment');
   };
 
-  const handleSubmitPayment = (e: React.FormEvent) => {
+  const handleSubmitPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate payment processing
-    setTimeout(() => {
-      navigate('/payment-result', { 
-        state: { 
-          success: true, 
-          paymentMethod,
-          orderId: 'ORD' + Date.now()
-        } 
-      });
-    }, 1000);
+    
+    if (!cart || cart.items.length === 0) {
+      toast.error('Giỏ hàng trống');
+      return;
+    }
+    
+    // Validate form data
+    if (!formData.address || !formData.phone) {
+      toast.error('Vui lòng điền đầy đủ thông tin giao hàng');
+      setStep('address');
+      return;
+    }
+    
+    try {
+      // Create order with full address
+      const fullAddress = `${formData.address}, ${formData.ward}, ${formData.district}`;
+      const orderData = {
+        shippingAddress: fullAddress,
+        shippingCity: formData.city,
+        shippingPostalCode: '',
+        shippingPhone: formData.phone,
+      };
+      
+      console.log('Creating order with data:', orderData);
+      const order = await orderApi.createOrder(orderData);
+      console.log('Order created:', order);
+      
+      // Create payment
+      console.log('Creating payment for order:', order.id, 'method:', paymentMethod);
+      const payment = await paymentApi.createPayment(order.id, paymentMethod);
+      console.log('Payment created:', payment);
+      
+      if (paymentMethod === 'VNPAY') {
+        const vnpayParams = await paymentApi.getPaymentVnpayUrl(payment.id);
+        console.log('VNPay params received:', vnpayParams);
+        
+        // Create and submit form to VNPay
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = vnpayParams.vnp_ApiUrl;
+        form.style.display = 'none'; // Hide form from UI
+        
+        // Add all parameters as hidden fields (except apiUrl and url)
+        Object.entries(vnpayParams).forEach(([key, value]) => {
+          if (key !== 'vnp_ApiUrl' && key !== 'url') {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = String(value);
+            form.appendChild(input);
+          }
+        });
+        
+        document.body.appendChild(form);
+        
+        // Submit form with slight delay to ensure DOM is settled
+        setTimeout(() => {
+          form.submit();
+        }, 50);
+      } else {
+        // COD - redirect to success page
+        toast.success('Đặt hàng thành công!');
+        navigate('/payment-result', { 
+          state: { 
+            success: true, 
+            paymentMethod: 'COD',
+            orderId: order.id
+          } 
+        });
+      }
+    } catch (error: any) {
+      console.error('Order/Payment error:', error);
+      toast.error(error.message || 'Có lỗi xảy ra khi tạo đơn hàng');
+    }
   };
 
-  const cartTotal = 4260000; // Mock total
+  const shipping = 50000;
+  const total = (cart?.totalPrice || 0) + shipping;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -93,90 +221,177 @@ export function Checkout() {
                 <CardTitle>Thông tin giao hàng</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmitAddress} className="space-y-4">
-                  <div>
-                    <Label htmlFor="fullName">Họ và tên *</Label>
-                    <Input
-                      id="fullName"
-                      required
-                      value={formData.fullName}
-                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      placeholder="Nguyễn Văn A"
-                    />
+                {/* Saved Addresses */}
+                {addresses.length > 0 && !showNewAddressForm && (
+                  <div className="mb-6">
+                    <h3 className="font-semibold mb-3">Chọn địa chỉ có sẵn</h3>
+                    <div className="space-y-2">
+                      {addresses.map(address => (
+                        <div
+                          key={address.id}
+                          className={`p-4 border rounded-lg cursor-pointer transition ${
+                            selectedAddressId === address.id
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'hover:border-gray-400'
+                          }`}
+                          onClick={() => handleSelectAddress(address)}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold">{address.fullName}</span>
+                                {address.isDefault && (
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                    Mặc định
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 mt-1">{address.phone}</p>
+                              <p className="text-sm text-gray-600">
+                                {address.address}, {address.ward}, {address.district}, {address.city}
+                              </p>
+                            </div>
+                            <input
+                              type="radio"
+                              checked={selectedAddressId === address.id}
+                              onChange={() => handleSelectAddress(address)}
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full mt-4"
+                      onClick={() => {
+                        setShowNewAddressForm(true);
+                        setSelectedAddressId(null);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Thêm địa chỉ mới
+                    </Button>
                   </div>
+                )}
 
-                  <div className="grid grid-cols-2 gap-4">
+                {/* New Address Form */}
+                {(showNewAddressForm || addresses.length === 0) && (
+                  <form onSubmit={handleSubmitAddress} className="space-y-4">
+                    {addresses.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowNewAddressForm(false);
+                          const defaultAddr = addresses.find(a => a.isDefault);
+                          if (defaultAddr) {
+                            handleSelectAddress(defaultAddr);
+                          }
+                        }}
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Quay lại chọn địa chỉ có sẵn
+                      </Button>
+                    )}
+                    
                     <div>
-                      <Label htmlFor="phone">Số điện thoại *</Label>
+                      <Label htmlFor="fullName">Họ và tên *</Label>
                       <Input
-                        id="phone"
-                        type="tel"
+                        id="fullName"
                         required
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="0901234567"
+                        value={formData.fullName}
+                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                        placeholder="Nguyễn Văn A"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="email@example.com"
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <Label htmlFor="address">Địa chỉ cụ thể *</Label>
-                    <Input
-                      id="address"
-                      required
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Số nhà, tên đường"
-                    />
-                  </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="phone">Số điện thoại *</Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          required
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          placeholder="0901234567"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          placeholder="email@example.com"
+                        />
+                      </div>
+                    </div>
 
-                  <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="city">Tỉnh/Thành phố *</Label>
+                      <Label htmlFor="address">Địa chỉ cụ thể *</Label>
                       <Input
-                        id="city"
+                        id="address"
                         required
-                        value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        placeholder="Hà Nội"
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        placeholder="Số nhà, tên đường"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="district">Quận/Huyện *</Label>
-                      <Input
-                        id="district"
-                        required
-                        value={formData.district}
-                        onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                        placeholder="Cầu Giấy"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="ward">Phường/Xã *</Label>
-                      <Input
-                        id="ward"
-                        required
-                        value={formData.ward}
-                        onChange={(e) => setFormData({ ...formData, ward: e.target.value })}
-                        placeholder="Dịch Vọng"
-                      />
-                    </div>
-                  </div>
 
-                  <Button type="submit" className="w-full" size="lg">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="city">Tỉnh/Thành phố *</Label>
+                        <Input
+                          id="city"
+                          required
+                          value={formData.city}
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          placeholder="Hà Nội"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="district">Quận/Huyện *</Label>
+                        <Input
+                          id="district"
+                          required
+                          value={formData.district}
+                          onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                          placeholder="Cầu Giấy"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="ward">Phường/Xã *</Label>
+                        <Input
+                          id="ward"
+                          required
+                          value={formData.ward}
+                          onChange={(e) => setFormData({ ...formData, ward: e.target.value })}
+                          placeholder="Dịch Vọng"
+                        />
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full" size="lg">
+                      Tiếp tục
+                    </Button>
+                  </form>
+                )}
+
+                {/* Continue button for saved address */}
+                {!showNewAddressForm && addresses.length > 0 && selectedAddressId && (
+                  <Button 
+                    onClick={handleSubmitAddress} 
+                    className="w-full" 
+                    size="lg"
+                  >
                     Tiếp tục
                   </Button>
-                </form>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -249,24 +464,57 @@ export function Checkout() {
               <CardTitle>Đơn hàng</CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Product List */}
+              {cart && cart.items && cart.items.length > 0 && (
+                <div className="mb-4 pb-4 border-b">
+                  <h3 className="font-semibold mb-3 text-sm">Sản phẩm ({cart.totalItems})</h3>
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {cart.items.map(item => (
+                      <div key={item.variantId} className="flex gap-3">
+                        <div className="w-16 h-16 bg-gray-100 rounded flex-shrink-0">
+                          {item.imageUrl ? (
+                            <img 
+                              src={item.imageUrl} 
+                              alt={item.productName}
+                              className="w-full h-full object-cover rounded"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <MapPin className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{item.productName}</p>
+                          {item.variantDetails && (
+                            <p className="text-xs text-gray-500 truncate">{item.variantDetails}</p>
+                          )}
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-xs text-gray-500">x{item.quantity}</span>
+                            <span className="text-sm font-semibold text-blue-600">
+                              {item.subtotal.toLocaleString('vi-VN')}đ
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Price Summary */}
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Tạm tính:</span>
-                  <span>4,210,000đ</span>
+                  <span>{(cart?.totalPrice || 0).toLocaleString('vi-VN')}đ</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Phí vận chuyển:</span>
-                  <span>50,000đ</span>
+                  <span>{shipping.toLocaleString('vi-VN')}đ</span>
                 </div>
                 <div className="border-t pt-3 flex justify-between font-bold">
                   <span>Tổng cộng:</span>
-                  <span className="text-blue-600">4,260,000đ</span>
-                </div>
-              </div>
-
-              <div className="border-t pt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">3 sản phẩm</span>
+                  <span className="text-blue-600">{total.toLocaleString('vi-VN')}đ</span>
                 </div>
               </div>
             </CardContent>

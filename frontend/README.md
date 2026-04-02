@@ -1,8 +1,8 @@
 # GearFlow Frontend
 
-Frontend application cho hệ thống thương mại điện tử bàn phím cơ GearFlow.
+Frontend application for GearFlow mechanical keyboard e-commerce system.
 
-## 🛠️ Công Nghệ Sử Dụng
+## 🛠️ Technology Stack
 
 - **React 18** - UI library
 - **TypeScript** - Type safety
@@ -12,48 +12,48 @@ Frontend application cho hệ thống thương mại điện tử bàn phím cơ
 - **Radix UI** - Accessible components
 - **Lucide React** - Icons
 
-## 📋 Yêu Cầu Hệ Thống
+## 📋 System Requirements
 
-- Node.js 16+ hoặc cao hơn
-- npm 8+ hoặc yarn
+- Node.js 16+ or higher
+- npm 8+ or yarn
 
-## 🚀 Cài Đặt và Chạy
+## 🚀 Installation and Setup
 
-### 1. Cài Đặt Dependencies
+### 1. Install Dependencies
 
 ```bash
 npm install
 ```
 
-Hoặc với yarn:
+Or with yarn:
 
 ```bash
 yarn install
 ```
 
-### 2. Cấu Hình Environment
+### 2. Environment Configuration
 
-Tạo file `.env` (nếu cần):
+Create `.env` file (if needed):
 
 ```env
 VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
-Mặc định, API URL là `http://localhost:8080/api`
+Default API URL is `http://localhost:8080/api`
 
-### 3. Khởi Động Development Server
+### 3. Start Development Server
 
 ```bash
 npm run dev
 ```
 
-Hoặc:
+Or:
 
 ```bash
 yarn dev
 ```
 
-Application sẽ chạy tại: **http://localhost:5173**
+Application runs at: **http://localhost:5173**
 
 ### 4. Build Production
 
@@ -69,7 +69,7 @@ Build output: `dist/`
 npm run preview
 ```
 
-## 📁 Cấu Trúc Thư Mục
+## 📁 Project Structure
 
 ```
 frontend/
@@ -97,22 +97,22 @@ frontend/
 
 ### Public Pages
 
-- **Home** - Trang chủ
-- **Products** - Danh sách sản phẩm
-- **ProductDetail** - Chi tiết sản phẩm
-- **Cart** - Giỏ hàng
-- **Checkout** - Thanh toán
-- **Login** - Đăng nhập
-- **Register** - Đăng ký
+- **Home** - Homepage
+- **Products** - Product list
+- **ProductDetail** - Product details
+- **Cart** - Shopping cart
+- **Checkout** - Checkout
+- **Login** - Login
+- **Register** - Register
 
 ### Admin Pages
 
-- **AdminLayout** - Layout wrapper với auth protection
-- **AdminDashboard** - Dashboard với thống kê
-- **AdminProducts** - Quản lý sản phẩm (CRUD)
-- **AdminOrders** - Quản lý đơn hàng
-- **AdminCustomers** - Quản lý khách hàng
-- **AdminInventory** - Quản lý kho hàng
+- **AdminLayout** - Layout wrapper with auth protection
+- **AdminDashboard** - Dashboard with statistics
+- **AdminProducts** - Product management (CRUD)
+- **AdminOrders** - Order management
+- **AdminCustomers** - Customer management
+- **AdminInventory** - Inventory management
 - **AdminNav** - Sidebar navigation
 
 ### UI Components (Radix UI)
@@ -130,15 +130,15 @@ frontend/
 
 ### Login Flow
 
-1. User nhập username/password
+1. User enters username/password
 2. Call API `/api/auth/login`
-3. Nhận JWT token
-4. Lưu token vào localStorage
-5. Redirect đến trang chủ hoặc admin
+3. Receive JWT token
+4. Save token to localStorage
+5. Redirect to home or admin
 
 ### Protected Routes
 
-Admin routes được bảo vệ bởi `AdminLayout`:
+Admin routes are protected by `AdminLayout`:
 
 ```tsx
 <Route path="/admin" element={<AdminLayout />}>
@@ -150,7 +150,7 @@ Admin routes được bảo vệ bởi `AdminLayout`:
 </Route>
 ```
 
-Nếu user không phải admin, sẽ bị redirect về trang chủ.
+Non-admin users are redirected to homepage.
 
 ## 📡 API Integration
 
@@ -177,17 +177,17 @@ await apiService.updateOrderStatus(orderId, status);
 
 ### Error Handling
 
-API service tự động xử lý:
-- Token expired (401) → Logout và redirect
+API service automatically handles:
+- Token expired (401) → Logout and redirect
 - Network errors → Fallback data
-- Request deduplication → Tránh duplicate calls
-- Response cloning → Tránh "body stream already read"
+- Request deduplication → Avoid duplicate calls
+- Response cloning → Avoid "body stream already read"
 
 ## 🎨 Styling
 
 ### Tailwind CSS
 
-Sử dụng Tailwind utility classes:
+Use Tailwind utility classes:
 
 ```tsx
 <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow">
@@ -198,7 +198,7 @@ Sử dụng Tailwind utility classes:
 
 ### Custom Styles
 
-Global styles trong `src/index.css`:
+Global styles in `src/index.css`:
 
 ```css
 @tailwind base;
@@ -216,7 +216,7 @@ Global styles trong `src/index.css`:
 
 ## 🧪 Testing
 
-### Run Tests (nếu có)
+### Run Tests (if available)
 
 ```bash
 npm run test
@@ -226,29 +226,29 @@ npm run test
 
 1. Start backend: `cd backend && mvn spring-boot:run`
 2. Start frontend: `npm run dev`
-3. Login với admin/password123
-4. Test các chức năng admin
+3. Login with admin/password123
+4. Test admin features
 
-Xem chi tiết: `../TESTING_CHECKLIST.md`
+See details: `../docs/TESTING_GUIDE.md`
 
-## 🐛 Xử Lý Lỗi
+## 🐛 Troubleshooting
 
-### Lỗi: API connection refused
+### Error: API connection refused
 
-- Kiểm tra backend đang chạy trên port 8080
-- Kiểm tra CORS trong backend `application.yml`
+- Check backend is running on port 8080
+- Check CORS in backend `application.yml`
 
-### Lỗi: React warnings
+### Error: React warnings
 
-Đã fix:
+Fixed:
 - ✅ Uncontrolled input warnings
 - ✅ Missing Dialog description
 - ✅ forwardRef issues
 
-### Lỗi: Build warnings
+### Error: Build warnings
 
-- Chunk size warning là bình thường
-- Có thể tăng limit trong `vite.config.ts`:
+- Chunk size warning is normal
+- Can increase limit in `vite.config.ts`:
 
 ```ts
 export default defineConfig({
@@ -260,7 +260,7 @@ export default defineConfig({
 
 ## 📱 Responsive Design
 
-Application responsive cho:
+Application is responsive for:
 - Desktop (1920px+)
 - Laptop (1024px - 1919px)
 - Tablet (768px - 1023px)
@@ -268,8 +268,8 @@ Application responsive cho:
 
 Test responsive:
 1. F12 → Toggle device toolbar
-2. Chọn device preset
-3. Test navigation và forms
+2. Select device preset
+3. Test navigation and forms
 
 ## 🚀 Production Deployment
 
@@ -295,7 +295,7 @@ netlify deploy --prod
 
 ### Deploy to Static Hosting
 
-Upload `dist/` folder đến:
+Upload `dist/` folder to:
 - AWS S3 + CloudFront
 - Firebase Hosting
 - GitHub Pages
@@ -394,7 +394,7 @@ File: `tsconfig.json`
 - [ ] Order tracking
 - [ ] Analytics charts
 
-## 📚 Tài Liệu Tham Khảo
+## 📚 Documentation
 
 - [React Documentation](https://react.dev/)
 - [Vite Documentation](https://vitejs.dev/)
@@ -402,26 +402,6 @@ File: `tsconfig.json`
 - [Radix UI](https://www.radix-ui.com/)
 - [React Router](https://reactrouter.com/)
 
-## 🤝 Contributing
-
-1. Fork the project
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Open Pull Request
-
 ## 📄 License
 
 MIT License
-
-## 👥 Team
-
-GearFlow Development Team
-
-## 📞 Support
-
-Xem thêm:
-- `../HUONG_DAN_SU_DUNG.md` - Hướng dẫn sử dụng
-- `../TESTING_CHECKLIST.md` - Danh sách kiểm tra
-- `../ADMIN_PAGES_STATUS.md` - Trạng thái dự án
-  

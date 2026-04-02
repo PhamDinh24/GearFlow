@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router";
-import { apiService, ProductDTO, ProductVariantDTO } from "../services/api";
+import { productApi, wishlistApi } from "../services/api";
+import { ProductDTO, ProductVariantDTO } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -18,6 +19,7 @@ export function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariantDTO | null>(null);
+  const [isInWishlist, setIsInWishlist] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -27,11 +29,21 @@ export function ProductDetail() {
 
   const loadProduct = async (productId: string) => {
     try {
-      const data = await apiService.getProductById(productId);
+      const data = await productApi.getProductById(productId);
       setProduct(data);
       // Select first variant by default
       if (data.variants && data.variants.length > 0) {
         setSelectedVariant(data.variants[0]);
+      }
+      
+      // Check if product is in wishlist
+      if (isAuthenticated) {
+        try {
+          const inWishlist = await wishlistApi.isInWishlist(productId);
+          setIsInWishlist(inWishlist);
+        } catch (error) {
+          console.error('Error checking wishlist:', error);
+        }
       }
     } catch (error) {
       console.error('Error loading product:', error);
@@ -69,10 +81,18 @@ export function ProductDetail() {
     if (!product) return;
 
     try {
-      await apiService.addToWishlist(product.id);
-      toast.success('Đã thêm vào danh sách yêu thích');
-    } catch (error) {
-      toast.error('Không thể thêm vào yêu thích');
+      if (isInWishlist) {
+        await wishlistApi.removeFromWishlist(product.id);
+        setIsInWishlist(false);
+        toast.success('Đã xóa khỏi danh sách yêu thích');
+      } else {
+        await wishlistApi.addToWishlist(product.id);
+        setIsInWishlist(true);
+        toast.success('Đã thêm vào danh sách yêu thích');
+      }
+    } catch (error: any) {
+      console.error('Wishlist error:', error);
+      toast.error(error.message || 'Không thể cập nhật danh sách yêu thích');
     }
   };
 
@@ -85,7 +105,7 @@ export function ProductDetail() {
 
   const getAvailableStock = () => {
     if (selectedVariant) {
-      return selectedVariant.stock;
+      return selectedVariant.availableStock || selectedVariant.stock || 0;
     }
     return product?.stock || 0;
   };
@@ -172,9 +192,9 @@ export function ProductDetail() {
                         {variant.color && <span className="font-semibold">{variant.color}</span>}
                         {variant.switchType && <span className="text-sm text-gray-600"> • {variant.switchType}</span>}
                         {variant.keycapSet && <span className="text-sm text-gray-600"> • {variant.keycapSet}</span>}
-                        {variant.connectType && <span className="text-sm text-gray-600"> • {variant.connectType}</span>}
+                        {variant.connectionType && <span className="text-sm text-gray-600"> • {variant.connectionType}</span>}
                         <div className="text-xs text-gray-500 mt-1">
-                          Còn {variant.stock} sản phẩm
+                          Còn {variant.availableStock || variant.stock || 0} sản phẩm
                         </div>
                       </div>
                       {variant.priceModifier !== 0 && (
@@ -196,8 +216,8 @@ export function ProductDetail() {
               <div className="grid grid-cols-2 gap-3">
                 {product.attributes.map(attr => (
                   <div key={attr.id} className="border rounded-lg p-3">
-                    <div className="text-xs text-gray-500">{attr.attrName}</div>
-                    <div className="font-semibold">{attr.attrValue}</div>
+                    <div className="text-xs text-gray-500">{attr.name || attr.attrName}</div>
+                    <div className="font-semibold">{attr.value || attr.attrValue}</div>
                   </div>
                 ))}
               </div>
@@ -264,8 +284,9 @@ export function ProductDetail() {
               size="lg" 
               variant="outline"
               onClick={handleAddToWishlist}
+              className={isInWishlist ? "text-red-500 border-red-500" : ""}
             >
-              <Heart className="w-5 h-5" />
+              <Heart className={`w-5 h-5 ${isInWishlist ? "fill-red-500" : ""}`} />
             </Button>
           </div>
         </div>

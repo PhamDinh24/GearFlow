@@ -34,38 +34,67 @@ public class PaymentService {
     @Value("${vnpay.hashSecret:}")
     private String vnpayHashSecret;
 
-    @Value("${vnpay.apiUrl:https://sandbox.vnpayment.vn/paygate/pay.html}")
+    @Value("${vnpay.apiUrl:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
     private String vnpayApiUrl;
 
-    @Value("${vnpay.returnUrl:http://localhost:3000/payment-result}")
+    @Value("${vnpay.returnUrl:http://localhost:5173/payment-result}")
     private String vnpayReturnUrl;
 
     @Transactional
-    public PaymentDTO createPayment(String orderId) {
-        log.info("Creating payment for order: {}", orderId);
+    public PaymentDTO createPayment(String orderId, String paymentMethod) {
+        log.info("Creating payment for order: {} with method: {}", orderId, paymentMethod);
+        
+        // Validate inputs
+        if (orderId == null || orderId.trim().isEmpty()) {
+            throw new BusinessException("Order ID is required");
+        }
+        if (paymentMethod == null || paymentMethod.trim().isEmpty()) {
+            throw new BusinessException("Payment method is required");
+        }
         
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
 
         // Check if payment already exists
         Optional<Payment> existingPayment = paymentRepository.findByOrderId(orderId);
         if (existingPayment.isPresent()) {
+            log.info("Payment already exists for order: {}", orderId);
             return toDTO(existingPayment.get());
         }
 
+        // Parse payment method
+        Payment.PaymentMethod method;
+        try {
+            method = Payment.PaymentMethod.valueOf(paymentMethod.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid payment method: {}", paymentMethod);
+            throw new BusinessException("Invalid payment method: " + paymentMethod + ". Valid methods: COD, VNPAY");
+        }
+
         Payment payment = Payment.builder()
+                .id(java.util.UUID.randomUUID().toString())
                 .orderId(order.getId())
-                .paymentMethod(Payment.PaymentMethod.VNPAY)
+                .paymentMethod(method)
                 .status(Payment.PaymentStatus.PENDING)
                 .amount(order.getTotalAmount())
                 .build();
 
         payment = paymentRepository.save(payment);
+
+        // If COD, auto-confirm order and mark COD payment as SUCCESS (pay on delivery)
+        if (method == Payment.PaymentMethod.COD) {
+            order.setStatus(Order.OrderStatus.CONFIRMED);
+            orderRepository.save(order);
+            payment.setStatus(Payment.PaymentStatus.SUCCESS);
+            payment = paymentRepository.save(payment);
+            log.info("Order auto-confirmed and COD payment marked success");
+        }
+        
         log.info("Payment created with ID: {}", payment.getId());
         return toDTO(payment);
     }
 
-    public String generateVNPayRequest(String paymentId) throws UnsupportedEncodingException {
+    public Map<String, String> generateVNPayRequest(String paymentId) throws UnsupportedEncodingException {
         log.info("Generating VNPay request for payment: {}", paymentId);
         
         Payment payment = paymentRepository.findById(paymentId)
@@ -84,22 +113,22 @@ public class PaymentService {
         vnpParams.put("vnp_ReturnUrl", vnpayReturnUrl);
         vnpParams.put("vnp_CreateDate", new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
         vnpParams.put("vnp_IpAddr", "127.0.0.1");
+        vnpParams.put("vnp_ExpireDate", new SimpleDateFormat("yyyyMMddHHmmss").format(new Date(System.currentTimeMillis() + 900000)));
 
         String signData = buildSignData(vnpParams);
+        log.debug("Sign data for payment {}: {}", paymentId, signData);
+        
         String vnpSecureHash = hmacSHA512(vnpayHashSecret, signData);
-        vnpParams.put("vnp_SecureHash", vnpSecureHash);
-
-        StringBuilder paymentUrl = new StringBuilder(vnpayApiUrl);
-        paymentUrl.append("?");
+        log.debug("Generated VNPay hash: {}", vnpSecureHash.substring(0, Math.min(16, vnpSecureHash.length())) + "...");
         
-        for (Map.Entry<String, String> entry : vnpParams.entrySet()) {
-            paymentUrl.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8.toString()))
-                    .append("=")
-                    .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8.toString()))
-                    .append("&");
-        }
+        Map<String, String> result = new HashMap<>(vnpParams);
+        result.put("vnp_SecureHash", vnpSecureHash);
+        result.put("vnp_SecureHashType", "SHA512");
+        result.put("vnp_ApiUrl", vnpayApiUrl);
         
-        return paymentUrl.toString();
+        log.info("VNPay request generated for order: {}, amount: {}, TMN: {}", 
+            payment.getOrderId(), payment.getAmount(), vnpayTmnCode);
+        return result;
     }
 
     @Transactional

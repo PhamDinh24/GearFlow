@@ -20,6 +20,8 @@ public class CartItemDTO {
 
     private String productId;
     private String productName;
+    private String imageUrl;
+    private String variantDetails; // e.g., "Red, Cherry MX Blue"
 
     @Min(value = 1, message = "Quantity must be at least 1")
     private Integer quantity;

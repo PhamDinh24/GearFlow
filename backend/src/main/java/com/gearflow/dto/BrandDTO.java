@@ -15,5 +15,8 @@ public class BrandDTO {
     private String id;
     private String name;
     private String description;
+    private String imageUrl;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private Integer productCount;
 }

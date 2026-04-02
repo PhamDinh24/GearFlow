@@ -37,6 +37,39 @@ public class CategoryService {
                 .id(category.getId())
                 .name(category.getName())
                 .description(category.getDescription())
+                .createdAt(category.getCreatedAt())
                 .build();
+    }
+
+    @Transactional
+    public CategoryDTO createCategory(CategoryDTO dto) {
+        log.info("Creating category: {}", dto.getName());
+        Category category = Category.builder()
+                .id(java.util.UUID.randomUUID().toString())
+                .name(dto.getName())
+                .description(dto.getDescription())
+                .build();
+        Category saved = categoryRepository.save(category);
+        return convertToDTO(saved);
+    }
+
+    @Transactional
+    public CategoryDTO updateCategory(String id, CategoryDTO dto) {
+        log.info("Updating category: {}", id);
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found: " + id));
+        category.setName(dto.getName());
+        category.setDescription(dto.getDescription());
+        Category updated = categoryRepository.save(category);
+        return convertToDTO(updated);
+    }
+
+    @Transactional
+    public void deleteCategory(String id) {
+        log.info("Deleting category: {}", id);
+        if (!categoryRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Category not found: " + id);
+        }
+        categoryRepository.deleteById(id);
     }
 }

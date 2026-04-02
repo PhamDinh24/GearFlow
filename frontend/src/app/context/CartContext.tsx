@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { CartDTO, CartItemDTO, apiService } from '../services/api';
+import { cartApi } from '../services/api';
+import { CartDTO } from '../types';
 import { useAuth } from './AuthContext';
 
 interface CartContextType {
@@ -32,11 +33,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      const cartData = await apiService.getCart();
+      const cartData = await cartApi.getCart();
       setCart(cartData);
     } catch (err) {
       const message = err && typeof err === 'object' && 'message' in err ? (err as Error).message : 'Failed to fetch cart';
-      // Only set error if it's not an auth error (auth errors are handled by logout event)
       if (!message.includes('Session expired')) {
         setError(message);
       }
@@ -53,7 +53,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      const updatedCart = await apiService.addToCart(variantId, quantity);
+      const updatedCart = await cartApi.addToCart(variantId, quantity);
       setCart(updatedCart);
     } catch (err) {
       const message = err && typeof err === 'object' && 'message' in err ? (err as Error).message : 'Failed to add to cart';
@@ -71,7 +71,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      const updatedCart = await apiService.updateCartItem(variantId, quantity);
+      const updatedCart = await cartApi.updateCartItem(variantId, quantity);
       setCart(updatedCart);
     } catch (err) {
       const message = err && typeof err === 'object' && 'message' in err ? (err as Error).message : 'Failed to update cart';
@@ -89,7 +89,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      const updatedCart = await apiService.removeFromCart(variantId);
+      const updatedCart = await cartApi.removeFromCart(variantId);
       setCart(updatedCart);
     } catch (err) {
       const message = err && typeof err === 'object' && 'message' in err ? (err as Error).message : 'Failed to remove from cart';
@@ -107,7 +107,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      await apiService.clearCart();
+      await cartApi.clearCart();
       setCart(null);
     } catch (err) {
       const message = err && typeof err === 'object' && 'message' in err ? (err as Error).message : 'Failed to clear cart';
