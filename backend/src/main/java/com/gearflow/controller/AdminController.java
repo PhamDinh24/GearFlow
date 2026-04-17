@@ -64,8 +64,64 @@ public class AdminController {
     public ResponseEntity<List<OrderDTO>> getOrdersByStatus(
             @RequestParam(required = false) Order.OrderStatus status) {
         log.info("GET /api/admin/orders - Status: {}", status);
-        List<OrderDTO> orders = adminService.getOrdersByStatus(status);
+        List<OrderDTO> orders = adminService.getOrdersByStatusDetailed(status);
         return ResponseEntity.ok(orders);
+    }
+
+    // Analytics Endpoints
+    @GetMapping("/analytics/products")
+    public ResponseEntity<Map<String, Object>> getProductAnalytics() {
+        return ResponseEntity.ok(adminService.getProductAnalytics());
+    }
+
+    @GetMapping("/analytics/reviews")
+    public ResponseEntity<Map<String, Object>> getReviewAnalytics() {
+        return ResponseEntity.ok(adminService.getReviewAnalytics());
+    }
+
+    @GetMapping("/analytics/order-status-distribution")
+    public ResponseEntity<Map<String, Object>> getOrderStatusDistribution() {
+        return ResponseEntity.ok(adminService.getOrderStatusDistribution());
+    }
+
+    @GetMapping("/analytics/top-rated-products")
+    public ResponseEntity<List<Map<String, Object>>> getTopRatedProducts(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(adminService.getTopRatedProducts(limit));
+    }
+
+    // Export Endpoints
+    @GetMapping("/export/orders")
+    public ResponseEntity<byte[]> exportOrders() {
+        byte[] data = adminService.exportOrdersAsCSV();
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/csv")
+                .header("Content-Disposition", "attachment; filename=orders.csv")
+                .body(data);
+    }
+
+    @GetMapping("/export/products")
+    public ResponseEntity<byte[]> exportProducts() {
+        byte[] data = adminService.exportProductsAsCSV();
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/csv")
+                .header("Content-Disposition", "attachment; filename=products.csv")
+                .body(data);
+    }
+
+    // Bulk Operations Endpoints
+    @DeleteMapping("/bulk/products/delete")
+    public ResponseEntity<Void> bulkDeleteProducts(@RequestBody List<String> productIds) {
+        adminService.bulkDeleteProducts(productIds);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/bulk/products/update-category")
+    public ResponseEntity<Void> bulkUpdateCategory(
+            @RequestParam String categoryId,
+            @RequestBody List<String> productIds) {
+        adminService.bulkUpdateProductCategory(productIds, categoryId);
+        return ResponseEntity.ok().build();
     }
 
     // Order Management
@@ -82,6 +138,12 @@ public class AdminController {
             log.error("Invalid order status: {}", request.getStatus());
             throw new com.gearflow.exception.BusinessException("Invalid order status: " + request.getStatus());
         }
+    }
+
+    @PostMapping("/orders/{id}/cancel")
+    public ResponseEntity<OrderDTO> adminCancelOrder(@PathVariable String id) {
+        log.info("POST /api/admin/orders/{}/cancel", id);
+        return ResponseEntity.ok(adminService.adminCancelOrder(id));
     }
 
     @Data

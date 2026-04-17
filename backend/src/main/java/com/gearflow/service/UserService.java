@@ -81,6 +81,67 @@ public class UserService {
         log.info("User image updated for user: {}", userId);
     }
 
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<UserDTO> getAllUsers(org.springframework.data.domain.Pageable pageable) {
+        log.info("Fetching all users");
+        return userRepository.findAll(pageable).map(this::convertToDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<UserDTO> getUsersByRole(String role) {
+        log.info("Fetching users with role: {}", role);
+        try {
+            User.UserRole userRole = User.UserRole.valueOf(role.toUpperCase());
+            return userRepository.findAll().stream()
+                    .filter(user -> user.getRole() != null && user.getRole().equals(userRole))
+                    .map(this::convertToDTO)
+                    .collect(java.util.stream.Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid role: {}", role);
+            return java.util.List.of();
+        }
+    }
+
+    @Transactional
+    public void deleteUser(String id) {
+        log.info("Deleting user with id: {}", id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        userRepository.delete(user);
+        log.info("User deleted with id: {}", id);
+    }
+
+    @Transactional
+    public void deleteMultipleUsers(java.util.List<String> userIds) {
+        log.info("Deleting {} users", userIds.size());
+        java.util.List<User> users = userRepository.findAllById(userIds);
+        userRepository.deleteAll(users);
+        log.info("Deleted {} users", users.size());
+    }
+
+    @Transactional(readOnly = true)
+    public long getTotalUserCount() {
+        log.info("Fetching total user count");
+        return userRepository.count();
+    }
+
+    @Transactional
+    public UserDTO updateUserRole(String id, String role) {
+        log.info("Updating user {} role to {}", id, role);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        try {
+            User.UserRole userRole = User.UserRole.valueOf(role.toUpperCase());
+            user.setRole(userRole);
+            User updated = userRepository.save(user);
+            log.info("User role updated successfully");
+            return convertToDTO(updated);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid role: {}", role);
+            throw new IllegalArgumentException("Invalid role: " + role);
+        }
+    }
+
     private UserDTO convertToDTO(User user) {
         return UserDTO.builder()
             .id(user.getId())

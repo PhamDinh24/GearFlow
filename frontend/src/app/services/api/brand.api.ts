@@ -4,7 +4,7 @@ import { BrandDTO } from '../../types';
 class BrandApiService extends BaseApiService {
   async getBrands(): Promise<BrandDTO[]> {
     const response = await this.fetchWithTimeout(
-      this.buildUrl('/brands'),
+      this.buildUrl('/products/brands'),
       {
         method: 'GET',
         headers: this.getHeaders(false),
@@ -15,7 +15,7 @@ class BrandApiService extends BaseApiService {
 
   async createBrand(data: { name: string; description?: string }): Promise<BrandDTO> {
     const response = await this.fetchWithTimeout(
-      this.buildUrl('/admin/brands'),
+      this.buildUrl('/products/admin/brands'),
       {
         method: 'POST',
         headers: this.getHeaders(true),
@@ -27,7 +27,7 @@ class BrandApiService extends BaseApiService {
 
   async updateBrand(id: string, data: { name: string; description?: string }): Promise<BrandDTO> {
     const response = await this.fetchWithTimeout(
-      this.buildUrl(`/admin/brands/${id}`),
+      this.buildUrl(`/products/admin/brands/${id}`),
       {
         method: 'PUT',
         headers: this.getHeaders(true),
@@ -39,7 +39,7 @@ class BrandApiService extends BaseApiService {
 
   async deleteBrand(id: string): Promise<void> {
     const response = await this.fetchWithTimeout(
-      this.buildUrl(`/admin/brands/${id}`),
+      this.buildUrl(`/products/admin/brands/${id}`),
       {
         method: 'DELETE',
         headers: this.getHeaders(true),

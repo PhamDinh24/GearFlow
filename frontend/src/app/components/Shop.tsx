@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router";
 import { productApi, categoryApi, brandApi, wishlistApi } from "../services/api";
 import type { ProductDTO, CategoryDTO, BrandDTO } from "../types";
@@ -39,6 +40,8 @@ export function Shop() {
   const [brands, setBrands] = useState<BrandDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [wishlistItems, setWishlistItems] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
   
   // Load data from API
   useEffect(() => {
@@ -99,6 +102,7 @@ export function Shop() {
       inStock: false,
     });
     setSearchQuery('');
+    setCurrentPage(1);
   };
 
   const filteredProducts = useMemo(() => {
@@ -163,6 +167,17 @@ export function Shop() {
     return result;
   }, [searchQuery, filters, sortBy, products]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters, sortBy]);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const activeFilterCount = 
     filters.categories.length +
     filters.brands.length +
@@ -225,15 +240,26 @@ export function Shop() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Cửa Hàng Bàn Phím</h1>
-        <p className="text-gray-600">
-          Tìm thấy {filteredProducts.length} sản phẩm
-          {activeFilterCount > 0 && ` (${activeFilterCount} bộ lọc đang áp dụng)`}
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-50/50 pb-20">
+      {/* Shop Header Banner */}
+      <section className="bg-slate-950 text-white py-16 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-indigo-600/10 z-0" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-4 uppercase">CỬA HÀNG</h1>
+            <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">
+              Khám phá bộ sưu tập bàn phím cơ và phụ kiện custom cao cấp nhất để nâng tầm trải nghiệm gõ phím của bạn.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
 
       {/* Search and Sort */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -286,7 +312,7 @@ export function Shop() {
             <SheetHeader>
               <SheetTitle>Bộ lọc sản phẩm</SheetTitle>
               <SheetDescription>
-                Tìm kiếm theo danh mục, thương hiệu và giá
+                Lọc
               </SheetDescription>
             </SheetHeader>
             <div className="mt-6">
@@ -305,13 +331,13 @@ export function Shop() {
       <div className="flex gap-8">
         {/* Desktop Filters */}
         <aside className="hidden sm:block w-64 flex-shrink-0">
-          <Card className="sticky top-24">
+          <Card className="sticky top-24 border-none shadow-[0_4px_24px_rgba(0,0,0,0.06)] rounded-2xl overflow-hidden">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-bold text-lg">Bộ lọc</h2>
+                <h2 className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600">Bộ lọc</h2>
                 {activeFilterCount > 0 && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    <X className="w-4 h-4 mr-1" />
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50">
+                    <X className="w-3 h-3 mr-1" />
                     Xóa ({activeFilterCount})
                   </Button>
                 )}
@@ -329,30 +355,87 @@ export function Shop() {
 
         {/* Products Grid */}
         <div className="flex-1">
-          {filteredProducts.length === 0 ? (
-            <Card className="p-12 text-center">
-              <p className="text-gray-600 mb-4">
+          {paginatedProducts.length === 0 ? (
+            <Card className="p-16 text-center border-dashed border-2 bg-transparent shadow-none">
+              <p className="text-gray-500 text-lg mb-6">
                 {searchQuery 
                   ? `Không tìm thấy sản phẩm với từ khóa "${searchQuery}"`
-                  : 'Không tìm thấy sản phẩm phù hợp với bộ lọc'}
+                  : 'Chưa có sản phẩm nào phù hợp với bộ lọc hiện tại'}
               </p>
-              <Button onClick={clearFilters}>Xóa bộ lọc</Button>
+              <Button onClick={clearFilters} size="lg" className="rounded-full">Xóa bộ lọc ngay</Button>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProducts.map(product => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product}
-                  isInWishlist={wishlistItems.has(product.id)}
-                  onToggleWishlist={() => handleToggleWishlist(product.id)}
-                  onAddToCart={() => handleAddToCart(product)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginatedProducts.map(product => (
+                  <ProductCard 
+                    key={product.id} 
+                    product={product}
+                    isInWishlist={wishlistItems.has(product.id)}
+                    onToggleWishlist={() => handleToggleWishlist(product.id)}
+                    onAddToCart={() => handleAddToCart(product)}
+                  />
+                ))}
+              </div>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-12 flex justify-center items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-full border-gray-200"
+                  >
+                    Trước
+                  </Button>
+                  
+                  <div className="flex bg-white rounded-full border shadow-sm px-2 py-1">
+                    {Array.from({ length: totalPages }).map((_, idx) => {
+                      const pageNum = idx + 1;
+                      // Simple pagination display logic to limit buttons
+                      if (
+                        totalPages > 5 &&
+                        pageNum !== 1 &&
+                        pageNum !== totalPages &&
+                        Math.abs(pageNum - currentPage) > 1
+                      ) {
+                        return pageNum === 2 || pageNum === totalPages - 1 ? (
+                          <span key={`dots-${pageNum}`} className="px-2 py-1 text-gray-400">...</span>
+                        ) : null;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                            currentPage === pageNum 
+                              ? "bg-blue-600 text-white shadow-md" 
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-full border-gray-200"
+                  >
+                    Tiếp
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }
@@ -454,7 +537,7 @@ function FilterContent({ filters, toggleArrayFilter, setFilters, categories, bra
             }
           />
           <label htmlFor="in-stock" className="ml-2 text-sm cursor-pointer">
-            Chỉ hiển thị còn hàng
+            Còn hàng
           </label>
         </div>
       </div>
@@ -474,101 +557,93 @@ function ProductCard({ product, isInWishlist, onToggleWishlist, onAddToCart }: P
   const hasVariants = product.variants && product.variants.length > 0;
   
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group">
-      <Link to={`/product/${product.id}`}>
-        <div className="aspect-square overflow-hidden bg-gray-100 relative">
+    <Card className="overflow-hidden hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all duration-500 group border-none rounded-3xl bg-white flex flex-col h-full relative">
+      <Link to={`/product/${product.id}`} className="block relative overflow-hidden">
+        <div className="aspect-[4/5] overflow-hidden bg-slate-50 relative">
           <img 
             src={product.imageUrl || 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500'} 
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out"
             loading="lazy"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          
+          <button 
+            onClick={(e) => { e.preventDefault(); onToggleWishlist(); }}
+            className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 z-20 ${
+              isInWishlist ? "bg-red-500 text-white" : "bg-white/80 text-gray-900 backdrop-blur-md opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0"
+            }`}
+          >
+            <Heart className={`w-5 h-5 ${isInWishlist ? 'fill-current' : ''}`} />
+          </button>
+
           {!hasStock && (
-            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-              <Badge variant="destructive" className="text-lg px-4 py-2">Hết hàng</Badge>
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-10">
+              <Badge variant="destructive" className="text-sm px-6 py-2 rounded-full shadow-2xl uppercase tracking-widest font-black">Tạm hết hàng</Badge>
             </div>
-          )}
-          {hasStock && product.stock < 10 && (
-            <Badge className="absolute top-2 right-2 bg-orange-500">
-              Còn {product.stock}
-            </Badge>
           )}
         </div>
       </Link>
-      <CardContent className="p-4">
-        <Link to={`/product/${product.id}`}>
-          <h3 className="font-semibold hover:text-blue-600 mb-2 line-clamp-2 min-h-[3rem]">
-            {product.name}
-          </h3>
-        </Link>
-        
-        {product.support && (
-          <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
-            <span className="font-medium">Hỗ trợ:</span> {product.support}
-          </p>
-        )}
-        
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.5rem]">
-          {product.description}
-        </p>
-        
-        <div className="flex items-baseline justify-between mb-3">
-          <div>
-            <span className="text-2xl font-bold text-blue-600">
-              {product.basePrice.toLocaleString('vi-VN')}đ
+
+      <CardContent className="p-6 flex-1 flex flex-col">
+        <div className="mb-3">
+          <Link to={`/product/${product.id}`}>
+            <h3 className="font-bold text-slate-900 text-lg hover:text-blue-600 transition-colors line-clamp-2 min-h-[3.5rem] leading-tight mb-2">
+              {product.name}
+            </h3>
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase font-black tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              {product.support || 'Custom'}
             </span>
-            {hasVariants && product.variants.some(v => v.priceModifier > 0) && (
-              <span className="text-xs text-gray-500 ml-2">
-                +{Math.min(...product.variants.map(v => v.priceModifier)).toLocaleString('vi-VN')}đ
-              </span>
-            )}
           </div>
         </div>
-        
-        {product.averageRating && product.reviewCount ? (
-          <div className="flex items-center gap-1 mb-2">
-            <div className="flex">
+
+        <div className="mt-auto">
+          <div className="flex items-end justify-between gap-2">
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter mb-1">Giá khởi điểm</p>
+              <span className="text-2xl font-black text-slate-900 tracking-tighter">
+                {product.basePrice.toLocaleString('vi-VN')}
+                <span className="text-xs ml-0.5 align-top">đ</span>
+              </span>
+            </div>
+            
+            <Button 
+              size="icon"
+              className="w-12 h-12 rounded-2xl bg-slate-900 hover:bg-blue-600 text-white transition-all duration-300 shadow-xl shadow-slate-200"
+              disabled={!hasStock || !hasVariants}
+              onClick={onAddToCart}
+            >
+              <ShoppingCart className="w-5 h-5" />
+            </Button>
+          </div>
+          
+          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-1">
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
-                  className={`w-4 h-4 ${
-                    i < Math.floor(product.averageRating || 0)
+                  className={`w-3 h-3 ${
+                    i < Math.floor(product.averageRating || 5)
                       ? 'fill-yellow-400 text-yellow-400'
-                      : 'text-gray-300'
+                      : 'text-slate-200'
                   }`}
                 />
               ))}
+              <span className="text-[10px] font-bold text-slate-500 ml-1">
+                {product.reviewCount || 0} Nhận xét
+              </span>
             </div>
-            <span className="text-sm font-semibold">{product.averageRating.toFixed(1)}</span>
-            <span className="text-xs text-gray-500">({product.reviewCount} đánh giá)</span>
           </div>
-        ) : (
-          <div className="text-xs text-gray-400 mb-2">Chưa có đánh giá</div>
-        )}
-        
-        {hasVariants && (
-          <div className="text-xs text-gray-500">
-            {product.variants.length} tùy chọn
-          </div>
-        )}
+        </div>
       </CardContent>
-      <CardFooter className="p-4 pt-0 flex gap-2">
+      <CardFooter className="p-0 border-none px-6 pb-6">
         <Button 
-          className="flex-1" 
-          size="sm" 
-          disabled={!hasStock || !hasVariants}
-          onClick={onAddToCart}
+          className="w-full h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-900 border-none font-bold uppercase tracking-widest text-[10px] transition-all"
+          asChild
         >
-          <ShoppingCart className="w-4 h-4 mr-2" />
-          {!hasStock ? 'Hết hàng' : !hasVariants ? 'Không có sẵn' : 'Thêm vào giỏ'}
-        </Button>
-        <Button 
-          variant={isInWishlist ? "default" : "outline"} 
-          size="sm"
-          onClick={onToggleWishlist}
-          className={isInWishlist ? "bg-red-500 hover:bg-red-600" : ""}
-        >
-          <Heart className={`w-4 h-4 ${isInWishlist ? 'fill-current' : ''}`} />
+          <Link to={`/product/${product.id}`}>Chi tiết</Link>
         </Button>
       </CardFooter>
     </Card>

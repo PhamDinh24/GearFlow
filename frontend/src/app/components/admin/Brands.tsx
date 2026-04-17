@@ -18,7 +18,7 @@ import {
 import { Plus, Edit, Trash2, Search, Tag } from "lucide-react";
 import { toast } from "sonner";
 
-export function AdminBrands() {
+export function Brands() {
   const [brands, setBrands] = useState<BrandDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -63,15 +63,16 @@ export function AdminBrands() {
       }
 
       if (editingBrand) {
-        await brandApi.updateBrand(editingBrand.id, brandForm);
+        const updated = await brandApi.updateBrand(editingBrand.id, brandForm);
+        setBrands(prev => prev.map(b => b.id === editingBrand.id ? updated : b));
         toast.success("Cập nhật thương hiệu thành công");
       } else {
-        await brandApi.createBrand(brandForm);
+        const created = await brandApi.createBrand(brandForm);
+        setBrands(prev => [created, ...prev]);
         toast.success("Tạo thương hiệu thành công");
       }
       
       setShowDialog(false);
-      loadBrands();
     } catch (error: any) {
       console.error("Error saving brand:", error);
       toast.error(error.message || "Không thể lưu thương hiệu");
@@ -82,9 +83,9 @@ export function AdminBrands() {
     if (!confirm("Bạn có chắc muốn xóa thương hiệu này?")) return;
 
     try {
+      setBrands(prev => prev.filter(b => b.id !== brandId));
       await brandApi.deleteBrand(brandId);
       toast.success("Xóa thương hiệu thành công");
-      loadBrands();
     } catch (error: any) {
       console.error("Error deleting brand:", error);
       toast.error(error.message || "Không thể xóa thương hiệu");
@@ -144,7 +145,7 @@ export function AdminBrands() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredBrands.map((brand) => (
-              <Card key={brand.id} className="hover:shadow-lg transition-shadow">
+              <Card key={brand.id} className="hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-l-4 border-l-blue-500">
                 <CardHeader>
                   <CardTitle className="flex justify-between items-start">
                     <span className="text-lg">{brand.name}</span>
@@ -232,4 +233,3 @@ export function AdminBrands() {
   );
 }
 
-export { AdminBrands as Brands };

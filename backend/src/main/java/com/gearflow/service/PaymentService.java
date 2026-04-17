@@ -27,6 +27,7 @@ import java.util.*;
 public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final ProductService productService;
 
     @Value("${vnpay.tmnCode:}")
     private String vnpayTmnCode;
@@ -87,6 +88,13 @@ public class PaymentService {
             orderRepository.save(order);
             payment.setStatus(Payment.PaymentStatus.SUCCESS);
             payment = paymentRepository.save(payment);
+            
+            // Process stock for COD
+            for (var item : order.getItems()) {
+                productService.decrementStock(item.getVariantId(), item.getQuantity());
+                productService.releaseReservedStock(item.getVariantId(), item.getQuantity());
+            }
+            
             log.info("Order auto-confirmed and COD payment marked success");
         }
         
@@ -169,9 +177,23 @@ public class PaymentService {
             order.setStatus(Order.OrderStatus.CONFIRMED);
             orderRepository.save(order);
             
+            // Process stock for successful payment
+            for (var item : order.getItems()) {
+                productService.decrementStock(item.getVariantId(), item.getQuantity());
+                productService.releaseReservedStock(item.getVariantId(), item.getQuantity());
+            }
+            
             log.info("Payment verified successfully");
         } else {
             payment.setStatus(Payment.PaymentStatus.FAILED);
+            
+            // Release reserved stock for failed payment
+            Order order = orderRepository.findById(payment.getOrderId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+            for (var item : order.getItems()) {
+                productService.releaseReservedStock(item.getVariantId(), item.getQuantity());
+            }
+            
             log.warn("Payment failed with response code: {}", responseCode);
         }
 

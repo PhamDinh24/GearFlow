@@ -18,13 +18,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/orders")
 @RequiredArgsConstructor
 @Slf4j
 public class OrderController {
     private final OrderService orderService;
 
-    @PostMapping
+    @PostMapping("/orders")
     public ResponseEntity<OrderDTO> createOrder(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestBody OrderRequest request) {
@@ -33,14 +32,14 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(order);
     }
 
-    @GetMapping("/{orderId}")
+    @GetMapping("/orders/{orderId}")
     public ResponseEntity<OrderDTO> getOrder(@PathVariable String orderId) {
         log.info("GET /api/orders/{}", orderId);
         OrderDTO order = orderService.getOrder(orderId);
         return ResponseEntity.ok(order);
     }
 
-    @GetMapping
+    @GetMapping("/orders")
     public ResponseEntity<List<OrderDTO>> getUserOrders(
             @AuthenticationPrincipal UserPrincipal user) {
         log.info("GET /api/orders - User: {}", user.getId());
@@ -48,17 +47,7 @@ public class OrderController {
         return ResponseEntity.ok(ordersPage.getContent());
     }
 
-    @PutMapping("/{orderId}/status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<OrderDTO> updateOrderStatus(
-            @PathVariable String orderId,
-            @RequestParam Order.OrderStatus status) {
-        log.info("PUT /api/orders/{}/status - New status: {}", orderId, status);
-        OrderDTO order = orderService.updateOrderStatus(orderId, status);
-        return ResponseEntity.ok(order);
-    }
-
-    @PostMapping("/{orderId}/cancel")
+    @PostMapping("/orders/{orderId}/cancel")
     public ResponseEntity<OrderDTO> cancelOrder(
             @PathVariable String orderId,
             @AuthenticationPrincipal UserPrincipal user) {

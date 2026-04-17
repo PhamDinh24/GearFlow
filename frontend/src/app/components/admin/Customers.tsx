@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Search, Users, UserCheck, Shield, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export function AdminCustomers() {
+export function Customers() {
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<UserDTO | null>(null);
@@ -45,9 +45,11 @@ export function AdminCustomers() {
     try {
       await userApi.updateUserRole(userId, newRole);
       toast.success('Cập nhật vai trò thành công');
-      loadUsers();
+      
+      // Immediate UI update
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
       if (selectedUser?.id === userId) {
-        setSelectedUser({...selectedUser, role: newRole});
+        setSelectedUser({ ...selectedUser, role: newRole });
       }
     } catch (error: any) {
       console.error('Error updating user role:', error);
@@ -61,7 +63,9 @@ export function AdminCustomers() {
     try {
       await userApi.deleteUser(userId);
       toast.success('Xóa người dùng thành công');
-      loadUsers();
+      
+      // Immediate UI update
+      setUsers(prev => prev.filter(u => u.id !== userId));
       setShowDialog(false);
     } catch (error: any) {
       console.error('Error deleting user:', error);
@@ -300,4 +304,3 @@ export function AdminCustomers() {
   );
 }
 
-export { AdminCustomers as Customers };

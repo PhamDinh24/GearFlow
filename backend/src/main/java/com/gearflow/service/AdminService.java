@@ -3,9 +3,16 @@ package com.gearflow.service;
 import com.gearflow.dto.OrderDTO;
 import com.gearflow.entity.Order;
 import com.gearflow.repository.OrderRepository;
+import com.gearflow.repository.ProductRepository;
+import com.gearflow.repository.ReviewRepository;
 import com.gearflow.repository.UserRepository;
+import com.gearflow.entity.Product;
+import com.gearflow.entity.Review;
+import com.gearflow.exception.BusinessException;
+import com.gearflow.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,28 +27,146 @@ import java.util.stream.Collectors;
 public class AdminService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final ReviewRepository reviewRepository;
+    private final OrderService orderService;
+
+    // Analytics Methods
+    @Transactional(readOnly = true)
+    @Cacheable(value = "product_analytics")
+    public Map<String, Object> getProductAnalytics() {
+        log.info("Fetching product analytics");
+        List<Product> allProducts = productRepository.findAll();
+        Map<String, Object> analytics = new HashMap<>();
+        analytics.put("totalProducts", allProducts.size());
+        analytics.put("outOfStock", allProducts.stream().filter(p -> p.getVariants() == null || p.getVariants().isEmpty()).count());
+        return analytics;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getReviewAnalytics() {
+        log.info("Fetching review analytics");
+        List<Review> allReviews = reviewRepository.findAll();
+        double averageRating = allReviews.stream().mapToDouble(Review::getRating).average().orElse(0.0);
+        Map<String, Object> analytics = new HashMap<>();
+        analytics.put("totalReviews", allReviews.size());
+        analytics.put("averageRating", averageRating);
+        return analytics;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getOrderStatusDistribution() {
+        log.info("Fetching order status distribution");
+        List<Order> allOrders = orderRepository.findAll();
+        Map<String, Object> distribution = new HashMap<>();
+        for (Order.OrderStatus status : Order.OrderStatus.values()) {
+            distribution.put(status.toString(), allOrders.stream().filter(o -> o.getStatus() == status).count());
+        }
+        return distribution;
+    }
+
+    // Bulk Operation Methods
+    @Transactional
+    @CacheEvict(value = "top_products", allEntries = true)
+    public void bulkDeleteProducts(List<String> productIds) {
+        log.info("Bulk deleting {} products", productIds.size());
+        List<Product> products = productRepository.findAllById(productIds);
+        productRepository.deleteAll(products);
+    }
+
+    @Transactional
+    public void bulkUpdateProductCategory(List<String> productIds, String categoryId) {
+        log.info("Bulk updating category for {} products", productIds.size());
+        List<Product> products = productRepository.findAllById(productIds);
+        products.forEach(product -> product.setCategoryId(categoryId));
+        productRepository.saveAll(products);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getTopRatedProducts(int limit) {
+        log.info("Fetching top {} rated products", limit);
+        return reviewRepository.findAll().stream()
+                .collect(Collectors.groupingBy(
+                        Review::getProductId,
+                        Collectors.averagingDouble(Review::getRating)
+                ))
+                .entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .limit(limit)
+                .map(entry -> {
+                    Map<String, Object> productInfo = new HashMap<>();
+                    productInfo.put("productId", entry.getKey());
+                    productInfo.put("averageRating", entry.getValue());
+                    return productInfo;
+                })
+                .collect(Collectors.toList());
+    }
+
+    // Export Methods
+    @Transactional(readOnly = true)
+    public byte[] exportOrdersAsCSV() {
+        log.info("Exporting orders as CSV");
+        List<Order> orders = orderRepository.findAll();
+        java.io.ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream();
+        try (java.io.PrintWriter writer = new java.io.PrintWriter(outputStream)) {
+            writer.println("Order ID,User ID,Status,Total Amount,Created At");
+            for (Order order : orders) {
+                writer.printf("%s,%s,%s,%s,%s%n", order.getId(), order.getUserId(), order.getStatus(), order.getTotalAmount(), order.getCreatedAt());
+            }
+            writer.flush();
+        }
+        return outputStream.toByteArray();
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportProductsAsCSV() {
+        log.info("Exporting products as CSV");
+        List<Product> products = productRepository.findAll();
+        java.io.ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream();
+        try (java.io.PrintWriter writer = new java.io.PrintWriter(outputStream)) {
+            writer.println("Product ID,Name,Price,Category ID");
+            for (Product product : products) {
+                writer.printf("%s,%s,%s,%s%n", product.getId(), escapeCSV(product.getName()), product.getBasePrice(), product.getCategoryId());
+            }
+            writer.flush();
+        }
+        return outputStream.toByteArray();
+    }
+
+    private String escapeCSV(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
 
     @Cacheable(value = "dashboard_stats")
     public Map<String, Object> getDashboardStats() {
         log.info("Fetching dashboard statistics");
         
         List<Order> allOrders = orderRepository.findAll();
-        
         long totalOrders = allOrders.size();
+
+        // Revenue only from successfully DELIVERED orders
         java.math.BigDecimal totalRevenue = allOrders.stream()
                 .filter(o -> o.getStatus() == Order.OrderStatus.DELIVERED)
                 .map(Order::getTotalAmount)
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
         
+        long totalUsers = userRepository.count();
         long newUsers = userRepository.findAll().stream()
-                .filter(u -> u.getCreatedAt().isAfter(LocalDateTime.now().minusDays(30)))
+                .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().isAfter(LocalDateTime.now().minusDays(30)))
                 .count();
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalOrders", totalOrders);
         stats.put("totalRevenue", totalRevenue);
+        stats.put("totalUsers", totalUsers);
         stats.put("newUsers", newUsers);
-        stats.put("averageOrderValue", totalOrders > 0 ? totalRevenue.divide(java.math.BigDecimal.valueOf(totalOrders)) : 0);
+        stats.put("deliveredOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.DELIVERED).count());
+        stats.put("pendingOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.PENDING).count());
+        stats.put("averageOrderValue", totalOrders > 0 ? totalRevenue.divide(java.math.BigDecimal.valueOf(totalOrders), 0, java.math.RoundingMode.HALF_UP) : 0);
         
         return stats;
     }
@@ -104,15 +229,16 @@ public class AdminService {
         if (status == null) {
             // Return all orders if no status specified
             return orderRepository.findAll().stream()
-                    .map(this::convertToDTO)
+                    .map(orderService::toDTO)
                     .collect(Collectors.toList());
         }
         return orderRepository.findByStatus(status).stream()
-                .map(this::convertToDTO)
+                .map(orderService::toDTO)
                 .collect(Collectors.toList());
     }
 
     @Transactional
+    @CacheEvict(value = "dashboard_stats", allEntries = true)
     public OrderDTO updateOrderStatus(String orderId, String status) {
         log.info("Updating order {} status to {}", orderId, status);
         
@@ -124,21 +250,28 @@ public class AdminService {
             order.setStatus(orderStatus);
             Order updated = orderRepository.save(order);
             log.info("Order status updated successfully");
-            return convertToDTO(updated);
+            return orderService.toDTO(updated);
         } catch (IllegalArgumentException e) {
             log.error("Invalid order status: {}", status);
             throw new IllegalArgumentException("Invalid order status: " + status);
         }
     }
 
-    private OrderDTO convertToDTO(Order order) {
-        return OrderDTO.builder()
-                .id(order.getId())
-                .userId(order.getUserId())
-                .status(order.getStatus().toString())
-                .totalAmount(order.getTotalAmount())
-                .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
-                .build();
+    public List<OrderDTO> getOrdersByStatusDetailed(Order.OrderStatus status) {
+        log.info("Fetching detailed orders with status: {}", status);
+        if (status == null) {
+            return orderRepository.findAll().stream()
+                    .map(orderService::toDTO)
+                    .collect(Collectors.toList());
+        }
+        return orderRepository.findByStatus(status).stream()
+                .map(orderService::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public OrderDTO adminCancelOrder(String orderId) {
+        log.info("Delegating admin cancel order {} to OrderService", orderId);
+        return orderService.adminCancelOrder(orderId);
     }
 }

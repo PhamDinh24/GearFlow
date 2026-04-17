@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 public class ShippingAddressService {
     
     private final ShippingAddressRepository addressRepository;
+    private final AddressValidationService addressValidationService;
     
     @Transactional(readOnly = true)
     public List<ShippingAddressDTO> getUserAddresses(String userId) {
@@ -161,23 +162,9 @@ public class ShippingAddressService {
     }
     
     private void validateAddress(ShippingAddressDTO dto) {
-        if (dto.getFullName() == null || dto.getFullName().trim().isEmpty()) {
-            throw new BusinessException("Full name is required");
-        }
-        if (dto.getPhone() == null || dto.getPhone().trim().isEmpty()) {
-            throw new BusinessException("Phone is required");
-        }
-        if (dto.getAddress() == null || dto.getAddress().trim().isEmpty()) {
-            throw new BusinessException("Address is required");
-        }
-        if (dto.getWard() == null || dto.getWard().trim().isEmpty()) {
-            throw new BusinessException("Ward is required");
-        }
-        if (dto.getDistrict() == null || dto.getDistrict().trim().isEmpty()) {
-            throw new BusinessException("District is required");
-        }
-        if (dto.getCity() == null || dto.getCity().trim().isEmpty()) {
-            throw new BusinessException("City is required");
+        AddressValidationService.ValidationResult result = addressValidationService.validateAddress(dto);
+        if (!result.isValid()) {
+            throw new BusinessException(result.getMessage());
         }
     }
     

@@ -4,14 +4,16 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { AdminPageWrapper } from './PageWrapper';
-import { orderApi } from '../../services/api';
-import { OrderDTO } from '../../types';
+import { adminApi, userApi, productApi } from '../../services/api';
+import { OrderDTO, UserDTO, ProductDTO } from '../../types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Search, ShoppingCart, Package, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Orders: React.FC = () => {
   const [orders, setOrders] = useState<OrderDTO[]>([]);
+  const [users, setUsers] = useState<UserDTO[]>([]);
+  const [products, setProducts] = useState<ProductDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderDTO | null>(null);
   const [showDialog, setShowDialog] = useState(false);
@@ -21,6 +23,11 @@ export const Orders: React.FC = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ orderId: string; status: string } | null>(null);
 
+  const getUserName = (userId: string) => {
+    const u = users.find(u => u.id === userId);
+    return u?.username || u?.email || userId.substring(0, 8) + '...';
+  };
+
   useEffect(() => {
     loadOrders();
   }, []);
@@ -28,8 +35,14 @@ export const Orders: React.FC = () => {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const data = await orderApi.getAllOrders();
+      const [data, usersData, productsData] = await Promise.all([
+        adminApi.getAllOrders(),
+        userApi.getAllUsers(),
+        productApi.getProducts(0, 1000)
+      ]);
       setOrders(data);
+      setUsers(usersData);
+      setProducts(Array.isArray(productsData) ? productsData : (productsData.content || []));
     } catch (error) {
       console.error('Error loading orders:', error);
       toast.error('Không thể tải danh sách đơn hàng');
@@ -56,7 +69,7 @@ export const Orders: React.FC = () => {
     
     try {
       setUpdatingStatus(orderId);
-      await orderApi.updateOrderStatus(orderId, status);
+      await adminApi.updateOrderStatus(orderId, status);
       toast.success('Cập nhật trạng thái thành công');
       
       // Update the local state
@@ -76,8 +89,9 @@ export const Orders: React.FC = () => {
   };
 
   const filteredOrders = orders.filter(order => {
+    const userName = getUserName(order.userId).toLowerCase();
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.userId.toLowerCase().includes(searchTerm.toLowerCase());
+                         userName.includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -85,9 +99,10 @@ export const Orders: React.FC = () => {
   const stats = {
     total: orders.length,
     pending: orders.filter(o => o.status === 'PENDING').length,
-    processing: orders.filter(o => o.status === 'PROCESSING' || o.status === 'CONFIRMED').length,
+    processing: orders.filter(o => o.status === 'PROCESSING' || o.status === 'CONFIRMED' || o.status === 'SHIPPED').length,
     completed: orders.filter(o => o.status === 'DELIVERED').length,
-    revenue: orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0),
+    // Revenue only from DELIVERED orders
+    revenue: orders.filter(o => o.status === 'DELIVERED').reduce((sum, o) => sum + (o.totalAmount || 0), 0),
   };
 
   const getStatusColor = (status: string) => {
@@ -253,8 +268,8 @@ export const Orders: React.FC = () => {
               <tbody>
                 {filteredOrders.map((order) => (
                   <tr key={order.id} className="border-b hover:bg-gray-50 transition-colors">
-                    <td className="p-4 font-mono text-sm">{order.id.substring(0, 8)}...</td>
-                    <td className="p-4">{order.userId.substring(0, 8)}...</td>
+                    <td className="p-4 font-mono text-sm text-blue-600 font-medium">{order.id}</td>
+                    <td className="p-4 font-medium">{getUserName(order.userId)}</td>
                     <td className="p-4 font-semibold">{order.totalAmount?.toLocaleString('vi-VN')}đ</td>
                     <td className="p-4">
                       <Badge className={getStatusColor(order.status)}>
@@ -305,7 +320,8 @@ export const Orders: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Khách Hàng</p>
-                  <p className="font-mono">{selectedOrder.userId}</p>
+                  <p className="font-semibold">{getUserName(selectedOrder.userId)}</p>
+                  <p className="text-xs text-gray-400 font-mono">{selectedOrder.userId}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Ngày Đặt</p>
@@ -343,21 +359,34 @@ export const Orders: React.FC = () => {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left p-3">Sản Phẩm</th>
-                        <th className="text-left p-3">Số Lượng</th>
-                        <th className="text-left p-3">Đơn Giá</th>
-                        <th className="text-left p-3">Thành Tiền</th>
+                        <th className="text-left p-3 text-xs uppercase tracking-wider text-gray-500 font-bold">Hình ảnh</th>
+                        <th className="text-left p-3 text-xs uppercase tracking-wider text-gray-500 font-bold">Sản Phẩm</th>
+                        <th className="text-left p-3 text-xs uppercase tracking-wider text-gray-500 font-bold">Số Lượng</th>
+                        <th className="text-left p-3 text-xs uppercase tracking-wider text-gray-500 font-bold">Đơn Giá</th>
+                        <th className="text-left p-3 text-xs uppercase tracking-wider text-gray-500 font-bold">Thành Tiền</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedOrder.items?.map((item: any, index: number) => (
-                        <tr key={index} className="border-t">
-                          <td className="p-3">{item.productName || item.productId}</td>
-                          <td className="p-3">{item.quantity}</td>
-                          <td className="p-3">{item.price?.toLocaleString('vi-VN')}đ</td>
-                          <td className="p-3 font-semibold">{(item.price * item.quantity).toLocaleString('vi-VN')}đ</td>
-                        </tr>
-                      ))}
+                      {selectedOrder.items?.map((item: any, index: number) => {
+                        const product = products.find(p => p.id === item.productId);
+                        return (
+                          <tr key={index} className="border-t hover:bg-gray-50/50 transition-colors">
+                            <td className="p-3">
+                              <div className="w-12 h-12 rounded bg-gray-100 overflow-hidden border border-gray-100">
+                                <img 
+                                  src={product?.imageUrl || 'https://via.placeholder.com/50'} 
+                                  className="w-full h-full object-cover" 
+                                  alt="" 
+                                />
+                              </div>
+                            </td>
+                            <td className="p-3 font-medium text-gray-900">{item.productName || item.productId}</td>
+                            <td className="p-3 font-semibold">{item.quantity}</td>
+                            <td className="p-3 text-gray-600">{item.price?.toLocaleString('vi-VN')}đ</td>
+                            <td className="p-3 font-bold text-blue-600">{(item.price * item.quantity).toLocaleString('vi-VN')}đ</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -3,7 +3,7 @@ import { AttributeDefinitionDTO } from '../../types';
 
 class AttributeApiService extends BaseApiService {
   constructor() {
-    super('/attribute-definitions');
+    super('/products/attribute-definitions');
   }
 
   async getAllAttributes(): Promise<AttributeDefinitionDTO[]> {

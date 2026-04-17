@@ -31,7 +31,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
     private final CartService cartService;
-    private final StockService stockService;
+    private final ProductService productService;
 
     @Transactional
     public OrderDTO createOrder(String userId, OrderRequest request) {
@@ -71,10 +71,10 @@ public class OrderService {
             variantRepository.findById(cartItem.getVariantId())
                     .orElseThrow(() -> new ResourceNotFoundException("Variant not found"));
 
-            if (!stockService.canReserve(cartItem.getVariantId(), cartItem.getQuantity())) {
+            if (!productService.canReserve(cartItem.getVariantId(), cartItem.getQuantity())) {
                 throw new BusinessException("Insufficient stock for variant " + cartItem.getVariantId());
             }
-            stockService.decrementStock(cartItem.getVariantId(), cartItem.getQuantity());
+            productService.reserveStock(cartItem.getVariantId(), cartItem.getQuantity());
 
             OrderItem item = OrderItem.builder()
                     .id(java.util.UUID.randomUUID().toString())
@@ -144,7 +144,7 @@ public class OrderService {
         // Restore stock for each item when order is cancelled
         for (var item : order.getItems()) {
             if (item.getVariantId() != null) {
-                stockService.incrementStock(item.getVariantId(), item.getQuantity());
+                productService.incrementStock(item.getVariantId(), item.getQuantity());
             }
         }
 
@@ -155,12 +155,76 @@ public class OrderService {
         return toDTO(order);
     }
 
+    public java.util.List<OrderDTO> getAllOrders() {
+        log.info("Fetching all orders");
+        return orderRepository.findAll().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public OrderDTO adminCancelOrder(String orderId) {
+        log.info("Admin cancelling order with id: {}", orderId);
+        
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        if (order.getStatus() == Order.OrderStatus.DELIVERED) {
+            throw new BusinessException("Cannot cancel a delivered order");
+        }
+
+        if (order.getStatus() == Order.OrderStatus.CANCELLED) {
+            throw new BusinessException("Order is already cancelled");
+        }
+
+        // Restore stock
+        if (order.getItems() != null) {
+            for (var item : order.getItems()) {
+                if (item.getVariantId() != null) {
+                    try {
+                        productService.incrementStock(item.getVariantId(), item.getQuantity());
+                    } catch (Exception e) {
+                        log.error("Error restoring stock", e);
+                    }
+                }
+            }
+        }
+
+        order.setStatus(Order.OrderStatus.CANCELLED);
+        order.setUpdatedAt(java.time.LocalDateTime.now());
+        
+        order = orderRepository.save(order);
+        return toDTO(order);
+    }
+
     private void validateStatusTransition(Order.OrderStatus currentStatus, Order.OrderStatus newStatus) {
         if (currentStatus == Order.OrderStatus.DELIVERED || currentStatus == Order.OrderStatus.CANCELLED) {
             throw new BusinessException("Cannot change status of completed order");
         }
-        if (currentStatus == Order.OrderStatus.PENDING && newStatus != Order.OrderStatus.CONFIRMED && newStatus != Order.OrderStatus.CANCELLED) {
-            throw new BusinessException("Invalid status transition");
+        
+        switch(currentStatus) {
+            case PENDING:
+                if (newStatus != Order.OrderStatus.CONFIRMED && newStatus != Order.OrderStatus.CANCELLED) {
+                    throw new BusinessException("From PENDING, can only go to CONFIRMED or CANCELLED");
+                }
+                break;
+            case CONFIRMED:
+                if (newStatus != Order.OrderStatus.PROCESSING && newStatus != Order.OrderStatus.CANCELLED) {
+                    throw new BusinessException("From CONFIRMED, can only go to PROCESSING or CANCELLED");
+                }
+                break;
+            case PROCESSING:
+                if (newStatus != Order.OrderStatus.SHIPPED && newStatus != Order.OrderStatus.CANCELLED) {
+                    throw new BusinessException("From PROCESSING, can only go to SHIPPED or CANCELLED");
+                }
+                break;
+            case SHIPPED:
+                if (newStatus != Order.OrderStatus.DELIVERED) {
+                    throw new BusinessException("From SHIPPED, can only go to DELIVERED");
+                }
+                break;
+            default:
+                throw new BusinessException("Unknown order status: " + currentStatus);
         }
     }
 

@@ -150,17 +150,157 @@ public class RecommendationService {
 
     public void trackProductView(String userId, String productId) {
         log.info("Tracking product view - User: {}, Product: {}", userId, productId);
-        
         try {
             ProductView view = ProductView.builder()
                     .id(java.util.UUID.randomUUID().toString())
                     .userId(userId)
                     .productId(productId)
                     .build();
-            
             productViewRepository.save(view);
         } catch (Exception e) {
             log.error("Error tracking product view", e);
+        }
+    }
+
+    // ---- Product-based Recommendation methods (merged from ProductRecommendationService) ----
+
+    public List<ProductDTO> getRecommendedProducts(String productId, int limit) {
+        Product currentProduct = productRepository.findById(productId).orElse(null);
+        if (currentProduct == null) {
+            return getTrendingRecommendations(limit);
+        }
+
+        List<Product> recommendations = new ArrayList<>();
+
+        List<Product> sameBrand = productRepository.findByBrandIdAndIdNot(
+                currentProduct.getBrandId(), productId, org.springframework.data.domain.PageRequest.of(0, limit));
+        recommendations.addAll(sameBrand);
+
+        if (recommendations.size() < limit) {
+            int remaining = limit - recommendations.size();
+            List<Product> sameCategory = productRepository.findByCategoryIdAndIdNotAndBrandIdNot(
+                    currentProduct.getCategoryId(), productId, currentProduct.getBrandId(),
+                    org.springframework.data.domain.PageRequest.of(0, remaining));
+            recommendations.addAll(sameCategory);
+        }
+
+        if (recommendations.size() < limit) {
+            int remaining = limit - recommendations.size();
+            List<String> excludeIds = recommendations.stream().map(Product::getId).collect(Collectors.toList());
+            excludeIds.add(productId);
+            List<Product> randomProducts = productRepository.findRandomProductsExcluding(
+                    excludeIds, org.springframework.data.domain.PageRequest.of(0, remaining));
+            recommendations.addAll(randomProducts);
+        }
+
+        return recommendations.stream().limit(limit).map(productService::convertToDTO).collect(Collectors.toList());
+    }
+
+    public List<ProductDTO> getSameBrandProducts(String productId, int limit) {
+        Product currentProduct = productRepository.findById(productId).orElse(null);
+        if (currentProduct == null) return List.of();
+        return productRepository.findByBrandIdAndIdNot(
+                        currentProduct.getBrandId(), productId, org.springframework.data.domain.PageRequest.of(0, limit))
+                .stream().map(productService::convertToDTO).collect(Collectors.toList());
+    }
+
+    public List<ProductDTO> getSameCategoryProducts(String productId, int limit) {
+        Product currentProduct = productRepository.findById(productId).orElse(null);
+        if (currentProduct == null) return List.of();
+        return productRepository.findByCategoryIdAndIdNot(
+                        currentProduct.getCategoryId(), productId, org.springframework.data.domain.PageRequest.of(0, limit))
+                .stream().map(productService::convertToDTO).collect(Collectors.toList());
+    }
+
+    // ---- Customer-based Recommendation methods (merged from CustomerProductRecommendationService) ----
+
+    @org.springframework.cache.annotation.Cacheable(value = "customer_recommendations", key = "#customerId + '-' + #limit")
+    public List<ProductDTO> getRecommendationsForCustomer(String customerId, int limit) {
+        log.info("Getting recommendations for customer: {}", customerId);
+        try {
+            List<Order> customerOrders = orderRepository.findAllByUserId(customerId);
+            if (customerOrders.isEmpty()) return getRandomProducts(limit);
+
+            Set<String> purchasedCategories = new HashSet<>();
+            Set<String> purchasedBrands = new HashSet<>();
+            Set<String> purchasedProductIds = new HashSet<>();
+
+            for (Order order : customerOrders) {
+                if (order.getItems() != null) {
+                    for (com.gearflow.entity.OrderItem item : order.getItems()) {
+                        if (item.getProductId() != null) {
+                            purchasedProductIds.add(item.getProductId());
+                            productRepository.findById(item.getProductId()).ifPresent(p -> {
+                                purchasedCategories.add(p.getCategoryId());
+                                purchasedBrands.add(p.getBrandId());
+                            });
+                        }
+                    }
+                }
+            }
+
+            Map<String, ProductDTO> result = new LinkedHashMap<>();
+            for (String categoryId : purchasedCategories) {
+                productRepository.findByCategoryIdAndIdNot(categoryId, "dummy-id",
+                        org.springframework.data.domain.PageRequest.of(0, limit * 2)).forEach(p -> {
+                    if (!purchasedProductIds.contains(p.getId()) && result.size() < limit)
+                        result.put(p.getId(), productService.convertToDTO(p));
+                });
+            }
+            if (result.size() < limit) {
+                for (String brandId : purchasedBrands) {
+                    productRepository.findByBrandIdAndIdNot(brandId, "dummy-id",
+                            org.springframework.data.domain.PageRequest.of(0, limit * 2)).forEach(p -> {
+                        if (!purchasedProductIds.contains(p.getId()) && !result.containsKey(p.getId()) && result.size() < limit)
+                            result.put(p.getId(), productService.convertToDTO(p));
+                    });
+                }
+            }
+            if (result.size() < limit) getRandomProducts(limit - result.size()).forEach(p -> result.putIfAbsent(p.getId(), p));
+
+            return result.values().stream().limit(limit).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error generating recommendations for customer: {}", customerId, e);
+            return getRandomProducts(limit);
+        }
+    }
+
+    @org.springframework.cache.annotation.Cacheable(value = "popular_with_category", key = "#categoryId + '-' + #limit")
+    public List<ProductDTO> getPopularProductsInCategory(String categoryId, int limit) {
+        log.info("Getting popular products for category: {}", categoryId);
+        try {
+            return productRepository.findByCategoryId(categoryId).stream()
+                    .limit(limit).map(productService::convertToDTO).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error fetching popular products: {}", categoryId, e);
+            return new ArrayList<>();
+        }
+    }
+
+    @org.springframework.cache.annotation.Cacheable(value = "random_products", key = "'all-' + #limit")
+    public List<ProductDTO> getRandomProducts(int limit) {
+        log.info("Getting {} random products", limit);
+        try {
+            return productRepository.findRandomProducts(org.springframework.data.domain.PageRequest.of(0, limit))
+                    .stream().map(productService::convertToDTO).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error fetching random products", e);
+            return new ArrayList<>();
+        }
+    }
+
+    public List<ProductDTO> getCrossSellRecommendations(String productId, int limit) {
+        log.info("Getting cross-sell recommendations for product: {}", productId);
+        try {
+            return productRepository.findById(productId).map(product -> {
+                List<Product> crossSell = productRepository.findByBrandIdAndIdNot(
+                        product.getBrandId(), productId, org.springframework.data.domain.PageRequest.of(0, limit * 2));
+                Collections.shuffle(crossSell);
+                return crossSell.stream().limit(limit).map(productService::convertToDTO).collect(Collectors.toList());
+            }).orElse(getRandomProducts(limit));
+        } catch (Exception e) {
+            log.error("Error fetching cross-sell recommendations: {}", productId, e);
+            return getRandomProducts(limit);
         }
     }
 }

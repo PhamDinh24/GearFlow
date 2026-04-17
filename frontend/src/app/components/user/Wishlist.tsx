@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
+import { motion } from "framer-motion";
 import type { WishlistDTO } from "../../types";
 import { Card, CardContent, CardFooter } from "../ui/card";
 import { Button } from "../ui/button";
-import { Heart, ShoppingCart, Trash2 } from "lucide-react";
+import { Heart, ShoppingCart, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { toast } from "sonner";
 import { useCart } from "../../context/CartContext";
@@ -54,111 +55,128 @@ export function Wishlist() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-lg">Đang tải...</div>
+      <div className="flex justify-center items-center min-h-screen bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (wishlist.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <Card className="p-12 text-center">
-          <Heart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Danh sách yêu thích trống</h2>
-          <p className="text-gray-600 mb-6">Bạn chưa có sản phẩm yêu thích nào</p>
-          <Link to="/shop">
-            <Button>Khám phá sản phẩm</Button>
-          </Link>
-        </Card>
+      <div className="min-h-screen bg-slate-50 flex flex-col pt-20">
+        <section className="bg-slate-950 text-white py-16 relative overflow-hidden mb-12">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-indigo-600/10 z-0" />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-4 uppercase">YÊU THÍCH</h1>
+            <p className="text-slate-400 max-w-2xl mx-auto text-lg">Danh sách sản phẩm bạn đang quan tâm.</p>
+          </div>
+        </section>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Card className="text-center py-20 border-none rounded-[3rem] shadow-xl shadow-slate-200">
+            <CardContent>
+              <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Heart className="w-12 h-12 text-red-200" />
+              </div>
+              <h2 className="text-3xl font-bold text-slate-900 mb-4">Danh sách yêu thích đang trống</h2>
+              <p className="text-slate-500 mb-8 max-w-md mx-auto">Hãy lưu lại những bộ bàn phím bạn ưng ý nhất để quay lại mua sau nhé.</p>
+              <Link to="/shop">
+                <Button size="lg" className="bg-slate-900 hover:bg-blue-600 text-white rounded-xl px-10 h-14 font-bold transition-all shadow-lg shadow-slate-200">
+                  Khám phá ngay
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Sản phẩm yêu thích</h1>
-        <p className="text-gray-600">{wishlist.length} sản phẩm</p>
-      </div>
+    <div className="min-h-screen bg-slate-50 pb-20">
+      {/* Wishlist Header Banner */}
+      <section className="bg-slate-950 text-white py-16 relative overflow-hidden mb-12">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-indigo-600/10 z-0" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-4 uppercase">YÊU THÍCH</h1>
+            <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">
+              Bạn đang lưu giữ {wishlist.length} sản phẩm mơ ước trong danh sách này.
+            </p>
+          </motion.div>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {wishlist.map(item => {
-          const product = item.product ?? {
-            id: item.productId,
-            name: item.productName || 'Sản phẩm',
-            imageUrl: 'https://via.placeholder.com/300?text=No+Image',
-            description: '',
-            support: '',
-            basePrice: item.price || 0,
-            variants: [],
-            stock: item.price != null ? 1 : 0,
-          };
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {wishlist.map(item => {
+            const product = item.product ?? {
+              id: item.productId,
+              name: item.productName || 'Sản phẩm',
+              imageUrl: 'https://via.placeholder.com/300?text=No+Image',
+              description: '',
+              support: '',
+              basePrice: item.price || 0,
+              variants: [],
+              stock: item.price != null ? 1 : 0,
+            };
 
-          return (
-            <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <Link to={`/product/${product.id}`}>
-                <div className="aspect-square overflow-hidden bg-gray-100 relative group">
-                  <img 
-                    src={product.imageUrl || 'https://via.placeholder.com/300?text=No+Image'} 
-                    alt={product.name}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      removeFromWishlist(product.id);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </Link>
-              <CardContent className="p-4">
-                <Link to={`/product/${product.id}`}>
-                  <h3 className="font-semibold hover:text-blue-600 mb-2 line-clamp-2">{product.name}</h3>
-                </Link>
-                {product.support && (
-                  <p className="text-xs text-gray-500 mb-2">{product.support}</p>
-                )}
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-                <div className="mb-2">
-                  <span className="text-lg font-bold text-blue-600">
-                    {product.basePrice.toLocaleString('vi-VN')}đ
-                  </span>
-                </div>
-                {product.averageRating && product.reviewCount && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-yellow-500">★</span>
-                    <span className="text-sm font-semibold">{product.averageRating.toFixed(1)}</span>
-                    <span className="text-xs text-gray-500">({product.reviewCount})</span>
+            return (
+              <Card key={item.id} className="overflow-hidden hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all duration-500 group border-none rounded-3xl bg-white flex flex-col h-full relative">
+                <Link to={`/product/${product.id}`} className="block relative overflow-hidden">
+                  <div className="aspect-[4/5] overflow-hidden bg-slate-50 relative">
+                    <img 
+                      src={product.imageUrl || 'https://via.placeholder.com/300?text=No+Image'} 
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    
+                    <button 
+                      onClick={(e) => { e.preventDefault(); removeFromWishlist(product.id); }}
+                      className="absolute top-4 right-4 w-10 h-10 bg-white/80 text-red-500 rounded-full flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300 z-20 shadow-lg"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
-                )}
-              </CardContent>
-              <CardFooter className="p-4 pt-0 flex gap-2">
-                <Button 
-                  className="flex-1" 
-                  size="sm"
-                  onClick={() => handleAddToCart(item)}
-                  disabled={product.stock === 0}
-                >
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  {product.stock > 0 ? 'Thêm vào giỏ' : 'Hết hàng'}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => removeFromWishlist(product.id)}
-                >
-                  <Heart className="w-4 h-4 fill-current text-red-500" />
-                </Button>
-              </CardFooter>
-            </Card>
-          );
-        })}
+                </Link>
+
+                <CardContent className="p-6 flex-1 flex flex-col">
+                   <div className="mb-4">
+                    <Link to={`/product/${product.id}`}>
+                      <h3 className="font-bold text-slate-900 text-lg hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
+                        {product.name}
+                      </h3>
+                    </Link>
+                  </div>
+
+                  <div className="mt-auto">
+                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter mb-1">Giá hiện tại</p>
+                    <p className="text-2xl font-black text-slate-900 tracking-tighter mb-6">
+                      {product.basePrice.toLocaleString('vi-VN')}
+                      <span className="text-sm ml-0.5 align-top">đ</span>
+                    </p>
+
+                    <div className="flex gap-2">
+                       <Button 
+                        className="flex-1 bg-slate-900 hover:bg-blue-600 text-white rounded-xl h-11 font-bold transition-all shadow-lg shadow-slate-200"
+                        onClick={() => handleAddToCart(item)}
+                        disabled={product.stock === 0}
+                      >
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        Mua ngay
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

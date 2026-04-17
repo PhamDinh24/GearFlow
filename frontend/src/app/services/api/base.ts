@@ -57,12 +57,25 @@ export class BaseApiService {
         window.dispatchEvent(new Event('auth:logout'));
         throw new ApiError('Session expired. Please login again.', 401);
       }
-      
-      const errorData = await response.clone().json().catch(() => ({}));
+
+      const text = await response.clone().text().catch(() => '');
+      let errorData: any = {};
+      if (text) {
+        try {
+          errorData = JSON.parse(text);
+        } catch {
+          errorData = { message: text };
+        }
+      }
+
+      const message =
+        errorData?.message ||
+        (typeof errorData === 'string' ? errorData : `HTTP ${response.status}: ${response.statusText}`);
+
       throw new ApiError(
-        errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+        message,
         response.status,
-        errorData
+        errorData?.errors || errorData
       );
     }
     return response.json();

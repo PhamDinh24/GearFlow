@@ -2,7 +2,7 @@ import { BaseApiService } from './base';
 import { ProductDTO, PageResponse } from '../../types';
 
 class ProductApiService extends BaseApiService {
-  async getProducts(page = 0, size = 10): Promise<PageResponse<ProductDTO>> {
+  async getProducts(page = 0, size = 12): Promise<PageResponse<ProductDTO>> {
     const response = await this.fetchWithTimeout(
       this.buildUrl('/products', { page, size }),
       {
@@ -24,7 +24,7 @@ class ProductApiService extends BaseApiService {
     return this.handleResponse<ProductDTO>(response);
   }
 
-  async searchProducts(keyword: string, page = 0, size = 10): Promise<PageResponse<ProductDTO>> {
+  async searchProducts(keyword: string, page = 0, size = 12): Promise<PageResponse<ProductDTO>> {
     const response = await this.fetchWithTimeout(
       this.buildUrl('/products/search', { keyword, page, size }),
       {

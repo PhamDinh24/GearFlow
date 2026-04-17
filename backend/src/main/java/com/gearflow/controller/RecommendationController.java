@@ -12,48 +12,76 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/recommendations")
 @RequiredArgsConstructor
 @Slf4j
 public class RecommendationController {
     private final RecommendationService recommendationService;
 
-    @GetMapping("/view-based")
+    // --- User-based recommendations ---
+
+    @GetMapping("/recommendations/view-based")
     public ResponseEntity<List<ProductDTO>> getViewBasedRecommendations(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestParam(defaultValue = "10") int limit) {
         log.info("GET /api/recommendations/view-based - User: {}", user.getId());
-        List<ProductDTO> recommendations = recommendationService.getViewBasedRecommendations(user.getId(), limit);
-        return ResponseEntity.ok(recommendations);
+        return ResponseEntity.ok(recommendationService.getViewBasedRecommendations(user.getId(), limit));
     }
 
-    @GetMapping("/purchase-based")
+    @GetMapping("/recommendations/purchase-based")
     public ResponseEntity<List<ProductDTO>> getPurchaseBasedRecommendations(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestParam(defaultValue = "10") int limit) {
         log.info("GET /api/recommendations/purchase-based - User: {}", user.getId());
-        List<ProductDTO> recommendations = recommendationService.getPurchaseBasedRecommendations(user.getId(), limit);
-        return ResponseEntity.ok(recommendations);
+        return ResponseEntity.ok(recommendationService.getPurchaseBasedRecommendations(user.getId(), limit));
     }
 
-    @GetMapping("/accessories/{productId}")
+    @GetMapping("/recommendations/customer-related")
+    public ResponseEntity<List<ProductDTO>> getCustomerRelatedRecommendations(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestParam(defaultValue = "10") int limit) {
+        log.info("GET /api/recommendations/customer-related - User: {}", user.getId());
+        return ResponseEntity.ok(recommendationService.getRecommendationsForCustomer(user.getId(), limit));
+    }
+
+    @GetMapping("/recommendations/accessories/{productId}")
     public ResponseEntity<List<ProductDTO>> getAccessoryRecommendations(
             @PathVariable String productId,
             @RequestParam(defaultValue = "10") int limit) {
         log.info("GET /api/recommendations/accessories/{}", productId);
-        List<ProductDTO> recommendations = recommendationService.getAccessoryRecommendations(productId, limit);
-        return ResponseEntity.ok(recommendations);
+        return ResponseEntity.ok(recommendationService.getAccessoryRecommendations(productId, limit));
     }
 
-    @GetMapping("/trending")
+    @GetMapping("/recommendations/trending")
     public ResponseEntity<List<ProductDTO>> getTrendingRecommendations(
             @RequestParam(defaultValue = "10") int limit) {
         log.info("GET /api/recommendations/trending");
-        List<ProductDTO> recommendations = recommendationService.getTrendingRecommendations(limit);
-        return ResponseEntity.ok(recommendations);
+        return ResponseEntity.ok(recommendationService.getTrendingRecommendations(limit));
     }
 
-    @PostMapping("/track/{productId}")
+    @GetMapping("/recommendations/random")
+    public ResponseEntity<List<ProductDTO>> getRandomRecommendations(
+            @RequestParam(defaultValue = "10") int limit) {
+        log.info("GET /api/recommendations/random - limit: {}", limit);
+        return ResponseEntity.ok(recommendationService.getRandomProducts(limit));
+    }
+
+    @GetMapping("/recommendations/customer-popular/{categoryId}")
+    public ResponseEntity<List<ProductDTO>> getCustomerPopularInCategory(
+            @PathVariable String categoryId,
+            @RequestParam(defaultValue = "10") int limit) {
+        log.info("GET /api/recommendations/customer-popular/{}", categoryId);
+        return ResponseEntity.ok(recommendationService.getPopularProductsInCategory(categoryId, limit));
+    }
+
+    @GetMapping("/recommendations/customer-crosssell/{productId}")
+    public ResponseEntity<List<ProductDTO>> getCustomerCrossSellRecommendations(
+            @PathVariable String productId,
+            @RequestParam(defaultValue = "10") int limit) {
+        log.info("GET /api/recommendations/customer-crosssell/{}", productId);
+        return ResponseEntity.ok(recommendationService.getCrossSellRecommendations(productId, limit));
+    }
+
+    @PostMapping("/recommendations/track/{productId}")
     public ResponseEntity<Void> trackProductView(
             @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String productId) {
@@ -61,5 +89,31 @@ public class RecommendationController {
         log.info("POST /api/recommendations/track/{} - User: {}", productId, userId);
         recommendationService.trackProductView(userId, productId);
         return ResponseEntity.noContent().build();
+    }
+
+    // --- Product-specific recommendation routes ---
+
+    @GetMapping("/products/{productId}/recommendations")
+    public ResponseEntity<List<ProductDTO>> getRecommendations(
+            @PathVariable String productId,
+            @RequestParam(defaultValue = "6") int limit) {
+        log.info("GET /api/products/{}/recommendations?limit={}", productId, limit);
+        return ResponseEntity.ok(recommendationService.getRecommendedProducts(productId, limit));
+    }
+
+    @GetMapping("/products/{productId}/same-brand")
+    public ResponseEntity<List<ProductDTO>> getSameBrandProducts(
+            @PathVariable String productId,
+            @RequestParam(defaultValue = "6") int limit) {
+        log.info("GET /api/products/{}/same-brand?limit={}", productId, limit);
+        return ResponseEntity.ok(recommendationService.getSameBrandProducts(productId, limit));
+    }
+
+    @GetMapping("/products/{productId}/same-category")
+    public ResponseEntity<List<ProductDTO>> getSameCategoryProducts(
+            @PathVariable String productId,
+            @RequestParam(defaultValue = "6") int limit) {
+        log.info("GET /api/products/{}/same-category?limit={}", productId, limit);
+        return ResponseEntity.ok(recommendationService.getSameCategoryProducts(productId, limit));
     }
 }

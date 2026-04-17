@@ -18,7 +18,7 @@ import {
 import { Plus, Edit, Trash2, Search, FolderTree } from "lucide-react";
 import { toast } from "sonner";
 
-export function AdminCategories() {
+export function Categories() {
   const [categories, setCategories] = useState<CategoryDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -63,15 +63,16 @@ export function AdminCategories() {
       }
 
       if (editingCategory) {
-        await categoryApi.updateCategory(editingCategory.id, categoryForm);
+        const updated = await categoryApi.updateCategory(editingCategory.id, categoryForm);
+        setCategories(prev => prev.map(c => c.id === editingCategory.id ? updated : c));
         toast.success("Cập nhật danh mục thành công");
       } else {
-        await categoryApi.createCategory(categoryForm);
+        const created = await categoryApi.createCategory(categoryForm);
+        setCategories(prev => [created, ...prev]);
         toast.success("Tạo danh mục thành công");
       }
       
       setShowDialog(false);
-      loadCategories();
     } catch (error: any) {
       console.error("Error saving category:", error);
       toast.error(error.message || "Không thể lưu danh mục");
@@ -82,9 +83,9 @@ export function AdminCategories() {
     if (!confirm("Bạn có chắc muốn xóa danh mục này?")) return;
 
     try {
+      setCategories(prev => prev.filter(c => c.id !== categoryId));
       await categoryApi.deleteCategory(categoryId);
       toast.success("Xóa danh mục thành công");
-      loadCategories();
     } catch (error: any) {
       console.error("Error deleting category:", error);
       toast.error(error.message || "Không thể xóa danh mục");
@@ -144,7 +145,7 @@ export function AdminCategories() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredCategories.map((category) => (
-              <Card key={category.id} className="hover:shadow-lg transition-shadow">
+              <Card key={category.id} className="hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-l-4 border-l-emerald-500">
                 <CardHeader>
                   <CardTitle className="flex justify-between items-start">
                     <span className="text-lg">{category.name}</span>
@@ -232,4 +233,3 @@ export function AdminCategories() {
   );
 }
 
-export { AdminCategories as Categories };

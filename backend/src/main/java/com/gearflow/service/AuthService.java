@@ -64,9 +64,9 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
-        String accessToken = jwtTokenProvider.generateAccessToken(authentication);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(((org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal()).getUsername());
         User user = userRepository.findByUsername(request.getUsername()).orElseThrow();
+        String accessToken = jwtTokenProvider.generateAccessToken(authentication);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
         log.info("User logged in successfully: {}", request.getUsername());
 

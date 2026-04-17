@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { AdminPageWrapper } from './PageWrapper';
-import { productApi, orderApi, userApi, brandApi, categoryApi } from '../../services/api';
+import { orderApi, productApi, userApi, brandApi, categoryApi, adminApi } from '../../services/api';
 import { 
   Package, 
   ShoppingCart, 
@@ -12,7 +12,8 @@ import {
   TrendingDown,
   Download,
   FileSpreadsheet,
-  FileText
+  FileText,
+  RefreshCcw
 } from 'lucide-react';
 import {
   LineChart,
@@ -59,6 +60,12 @@ export const Dashboard: React.FC = () => {
     lowStockProducts: []
   });
   const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState<string>(
+    new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]
+  );
+  const [endDate, setEndDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
 
   useEffect(() => {
     loadDashboardData();
@@ -68,40 +75,29 @@ export const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Load all data in parallel
-      const [ordersData, productsResponse, usersData, brandsData, categoriesData] = await Promise.all([
-        orderApi.getAllOrders(),
-        productApi.getProducts(0, 1000),
+      const [orders, products, users, brands, categoriesRes, backendStats] = await Promise.all([
+        adminApi.getAllOrders(),
+        productApi.getProducts(0, 1000).then(res => Array.isArray(res) ? res : (res?.content || [])),
         userApi.getAllUsers(),
         brandApi.getBrands(),
-        categoryApi.getCategories()
+        categoryApi.getCategories(),
+        adminApi.getDashboardStats()
       ]);
 
-      // Extract arrays from responses - handle all possible formats
-      const orders = Array.isArray(ordersData) ? ordersData : [];
-      
-      // Handle products - API may return paginated response or array
-      let products: any[] = [];
-      if (Array.isArray(productsResponse)) {
-        products = productsResponse;
-      } else if (productsResponse && typeof productsResponse === 'object') {
-        products = productsResponse.content || [];
-      }
-      
-      const users = Array.isArray(usersData) ? usersData : [];
-      const brands = Array.isArray(brandsData) ? brandsData : [];
-      const categories = Array.isArray(categoriesData) ? categoriesData : [];
+      const categories = Array.isArray(categoriesRes) ? categoriesRes : [];
 
       console.log('Dashboard loaded:', { 
         orders: orders.length, 
         products: products.length, 
         users: users.length,
         brands: brands.length,
-        categories: categories.length
+        categories: categories.length,
+        backendStats
       });
 
       // Calculate stats
-      const totalRevenue = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+      const deliveredOrders = orders.filter(o => o.status === 'DELIVERED');
+      const totalRevenue = backendStats.totalRevenue || deliveredOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
       
       // Orders by status
       const ordersByStatus = orders.reduce((acc, order) => {
@@ -117,10 +113,10 @@ export const Dashboard: React.FC = () => {
       }).reverse();
 
       const revenueByDate = last7Days.map(date => {
-        const dayOrders = orders.filter(order => 
-          order.createdAt && order.createdAt.startsWith(date)
+        const dayDeliveredOrders = orders.filter(order => 
+          order.status === 'DELIVERED' && order.createdAt && order.createdAt.startsWith(date)
         );
-        const revenue = dayOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+        const revenue = dayDeliveredOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
         const formattedDate = new Date(date).toLocaleDateString('vi-VN', { 
           month: 'short', 
           day: 'numeric' 
@@ -139,7 +135,8 @@ export const Dashboard: React.FC = () => {
               productSales[productId] = { 
                 count: 0, 
                 revenue: 0,
-                name: product?.name || productId
+                name: product?.name || productId,
+                imageUrl: product?.imageUrl || ''
               };
             }
             productSales[productId].count += item.quantity || 0;
@@ -152,6 +149,7 @@ export const Dashboard: React.FC = () => {
         .map(([id, data]) => ({
           id,
           name: data.name,
+          imageUrl: data.imageUrl,
           soldCount: data.count,
           revenue: data.revenue
         }))
@@ -218,11 +216,19 @@ export const Dashboard: React.FC = () => {
         .slice(0, 5);
 
       setStats({
-        totalOrders: orders.length,
+        totalOrders: backendStats.totalOrders || orders.length,
         totalRevenue,
         totalProducts: products.length,
-        totalUsers: users.length,
-        recentOrders: orders.slice(0, 5),
+        totalUsers: backendStats.totalUsers || users.length,
+        recentOrders: orders.slice(0, 5).map(o => {
+          const firstItem = o.items && o.items[0];
+          const product = products.find(p => p.id === firstItem?.productId);
+          return {
+            ...o,
+            userName: users.find((u: any) => u.id === o.userId)?.username || users.find((u: any) => u.id === o.userId)?.email || o.userId.substring(0, 8) + '...',
+            thumbnail: product?.imageUrl || ''
+          };
+        }),
         ordersByStatus,
         revenueByDate,
         topProducts,
@@ -285,6 +291,48 @@ export const Dashboard: React.FC = () => {
     link.click();
   };
 
+  const exportByTimeRange = () => {
+    const filteredOrders = stats.recentOrders.filter(order => {
+      const orderDate = new Date(order.createdAt).toISOString().split('T')[0];
+      return orderDate >= startDate && orderDate <= endDate;
+    });
+
+    const timeRangeRevenue = stats.revenueByDate.filter(item => {
+      return item.fullDate && item.fullDate >= startDate && item.fullDate <= endDate;
+    });
+
+    const totalRevenueInRange = timeRangeRevenue.reduce((sum, item) => sum + item.revenue, 0);
+
+    const csvData = [
+      [`Báo Cáo Từ ${startDate} Đến ${endDate}`],
+      [''],
+      ['Tổng Quan'],
+      ['Tổng Đơn Hàng', filteredOrders.length],
+      ['Tổng Doanh Thu', totalRevenueInRange],
+      [''],
+      ['Doanh Thu Theo Ngày'],
+      ['Ngày', 'Doanh Thu'],
+      ...timeRangeRevenue.map(item => [item.date, item.revenue]),
+      [''],
+      ['Đơn Hàng'],
+      ['Mã Đơn', 'Khách Hàng', 'Tổng Tiền', 'Trạng Thái', 'Ngày Đặt'],
+      ...filteredOrders.map(order => [
+        order.id.substring(0, 8),
+        order.userId.substring(0, 8),
+        order.totalAmount,
+        order.status,
+        new Date(order.createdAt).toLocaleDateString('vi-VN')
+      ])
+    ];
+
+    const csv = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `dashboard-report-${startDate}-to-${endDate}.csv`;
+    link.click();
+  };
+
   const StatCard = ({ 
     title, 
     value, 
@@ -298,9 +346,10 @@ export const Dashboard: React.FC = () => {
     trend?: 'up' | 'down';
     trendValue?: string;
   }) => (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
+    <Card className="hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-white to-gray-50/50 border-none shadow-sm overflow-hidden group">
+      <CardContent className="p-6 relative">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-150 duration-500" />
+        <div className="flex items-center justify-between relative z-10">
           <div>
             <p className="text-sm text-gray-600 mb-1">{title}</p>
             <p className="text-2xl font-bold">{value}</p>
@@ -330,18 +379,46 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <AdminPageWrapper title="Dashboard" description="Xem tổng quan toàn bộ dữ liệu kinh doanh">
-      <div className="flex justify-end gap-2">
-        <Button onClick={exportToCSV} variant="outline">
-          <FileSpreadsheet className="w-4 h-4 mr-2" />
-          Xuất CSV
-        </Button>
-        <Button onClick={exportToJSON} variant="outline">
-          <FileText className="w-4 h-4 mr-2" />
-          Xuất JSON
-        </Button>
-      </div>
-
+    <AdminPageWrapper
+      title="Dashboard"
+      description="Xem tổng quan toàn bộ dữ liệu kinh doanh"
+      actions={(
+        <>
+          <div className="flex gap-2 items-center">
+            <label className="text-sm font-medium">Từ ngày:</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="border rounded px-2 py-1 text-sm"
+            />
+            <label className="text-sm font-medium">Đến ngày:</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="border rounded px-2 py-1 text-sm"
+            />
+          </div>
+          <Button onClick={loadDashboardData} variant="outline">
+            <RefreshCcw className="w-4 h-4 mr-2" />
+            Làm mới
+          </Button>
+          <Button onClick={exportToCSV} variant="outline">
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Xuất CSV
+          </Button>
+          <Button onClick={exportByTimeRange} variant="outline">
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Xuất Theo Thời Gian
+          </Button>
+          <Button onClick={exportToJSON} variant="outline">
+            <FileText className="w-4 h-4 mr-2" />
+            Xuất JSON
+          </Button>
+        </>
+      )}
+    >
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
@@ -443,7 +520,6 @@ export const Dashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Top Statistics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top Products */}
         <Card>
@@ -456,25 +532,32 @@ export const Dashboard: React.FC = () => {
           <CardContent>
             <div className="space-y-4">
               {stats.topProducts.map((product, index) => (
-                <div key={product.id} className="flex items-center justify-between">
+                <div key={product.id} className="flex items-center justify-between group">
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                      index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                      index === 1 ? 'bg-gray-100 text-gray-700' :
-                      'bg-orange-100 text-orange-700'
-                    }`}>
-                      {index + 1}
+                    <div className="relative">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold relative z-10 ${
+                        index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                        index === 1 ? 'bg-gray-100 text-gray-700' :
+                        'bg-orange-100 text-orange-700'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <img 
+                        src={product.imageUrl || 'https://via.placeholder.com/40'} 
+                        className="absolute -top-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm z-20"
+                        alt=""
+                      />
                     </div>
                     <div>
-                      <p className="font-medium text-sm">{product.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {(product.revenue / 1000).toFixed(0)}K VNĐ
+                      <p className="font-semibold text-sm group-hover:text-blue-600 transition-colors">{product.name}</p>
+                      <p className="text-xs text-gray-400">
+                        Doanh thu: {product.revenue.toLocaleString('vi-VN')}đ
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-blue-600">{product.soldCount}</p>
-                    <p className="text-xs text-gray-500">đã bán</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Đã bán</p>
                   </div>
                 </div>
               ))}
@@ -485,7 +568,7 @@ export const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Top Brands & Categories */}
+        {/* Top Brands */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -508,32 +591,38 @@ export const Dashboard: React.FC = () => {
                 <p className="text-sm text-gray-500 text-center py-2">Chưa có dữ liệu</p>
               )}
             </div>
-            
-            <div className="mt-6 pt-4 border-t">
-              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                <Package className="w-4 h-4 text-indigo-600" />
-                Top 3 Danh Mục
-              </h4>
-              <div className="space-y-3">
-                {stats.topCategories.map((category, index) => (
-                  <div key={category.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{index + 1}.</span>
-                      <span className="font-medium text-sm">{category.name}</span>
-                    </div>
-                    <span className="font-bold text-indigo-600">{category.soldCount}</span>
-                  </div>
-                ))}
-                {stats.topCategories.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-2">Chưa có dữ liệu</p>
-                )}
-              </div>
-            </div>
           </CardContent>
         </Card>
 
-        {/* Low Stock Products */}
+        {/* Top Categories */}
         <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-indigo-600" />
+              Top 3 Danh Mục
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {stats.topCategories.map((category, index) => (
+                <div key={category.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{index + 1}.</span>
+                    <span className="font-medium text-sm">{category.name}</span>
+                  </div>
+                  <span className="font-bold text-indigo-600">{category.soldCount}</span>
+                </div>
+              ))}
+              {stats.topCategories.length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-2">Chưa có dữ liệu</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Low Stock Products */}
+      <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingDown className="w-5 h-5 text-red-600" />
@@ -566,7 +655,6 @@ export const Dashboard: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
 
       {/* Recent Orders */}
       <Card>
@@ -576,27 +664,51 @@ export const Dashboard: React.FC = () => {
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50/50">
                 <tr>
-                  <th className="text-left p-3">Mã Đơn</th>
-                  <th className="text-left p-3">Khách Hàng</th>
-                  <th className="text-left p-3">Tổng Tiền</th>
-                  <th className="text-left p-3">Trạng Thái</th>
-                  <th className="text-left p-3">Ngày Đặt</th>
+                  <th className="text-left p-4 font-semibold text-gray-600">Đơn Hàng</th>
+                  <th className="text-left p-4 font-semibold text-gray-600">Khách Hàng</th>
+                  <th className="text-left p-4 font-semibold text-gray-600">Tổng Tiền</th>
+                  <th className="text-left p-4 font-semibold text-gray-600">Trạng Thái</th>
+                  <th className="text-left p-4 font-semibold text-gray-600">Ngày Đặt</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.recentOrders.map((order) => (
-                  <tr key={order.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3 font-mono text-sm">{order.id.substring(0, 8)}...</td>
-                    <td className="p-3">{order.userId.substring(0, 8)}...</td>
-                    <td className="p-3 font-semibold">{order.totalAmount?.toLocaleString('vi-VN')}đ</td>
-                    <td className="p-3">
-                      <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                  <tr key={order.id} className="border-b hover:bg-white transition-all duration-200 group">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-100 group-hover:border-blue-200 transition-colors">
+                          <img 
+                            src={order.thumbnail || 'https://via.placeholder.com/40'} 
+                            className="w-full h-full object-cover" 
+                            alt="" 
+                          />
+                        </div>
+                        <div>
+                          <div className="font-mono text-xs font-bold text-gray-400">#{order.id.substring(0, 8)}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="font-medium text-gray-900">{order.userName || order.userId}</div>
+                      <div className="text-xs text-gray-400 truncate max-w-[150px]">ID: {order.userId.substring(0, 8)}...</div>
+                    </td>
+                    <td className="p-4 font-bold text-gray-900">{order.totalAmount?.toLocaleString('vi-VN')}đ</td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                        order.status === 'PENDING' ? 'bg-yellow-50 text-yellow-700' :
+                        order.status === 'PROCESSING' ? 'bg-purple-50 text-purple-700' :
+                        order.status === 'CONFIRMED' ? 'bg-blue-50 text-blue-700' :
+                        order.status === 'SHIPPED' ? 'bg-indigo-50 text-indigo-700' :
+                        order.status === 'DELIVERED' ? 'bg-green-50 text-green-700' :
+                        order.status === 'CANCELLED' ? 'bg-red-50 text-red-700' :
+                        'bg-gray-50 text-gray-700'
+                      }`}>
                         {order.status}
                       </span>
                     </td>
-                    <td className="p-3">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
+                    <td className="p-4 text-sm text-gray-500 font-medium">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
                   </tr>
                 ))}
               </tbody>

@@ -1,6 +1,8 @@
 // Export all API services
+export * from './admin.api';
 export { authApi } from './auth.api';
 export { productApi } from './product.api';
+export { productVariantApi } from './product-variant.api';
 export { cartApi } from './cart.api';
 export { orderApi } from './order.api';
 export { userApi } from './user.api';
@@ -11,7 +13,7 @@ export { stockApi } from './stock.api';
 export { shippingApi } from './shipping.api';
 export { wishlistApi } from './wishlist.api';
 export { attributeApi } from './attribute.api';
-export { recommendationApi } from './recommendation.api';
+export { recommendationApi, customerRecommendationApi } from './recommendation.api';
 
 // Export base classes and types
 export { BaseApiService, ApiError, API_BASE_URL } from './base';

@@ -51,4 +51,20 @@ public interface ProductRepository extends JpaRepository<Product, String> {
         @Param("maxPrice") BigDecimal maxPrice,
         Pageable pageable
     );
+    
+    // For recommendations
+    @Query("SELECT p FROM Product p ORDER BY p.createdAt DESC")
+    List<Product> findLatestProducts(Pageable pageable);
+    
+    @Query("SELECT p FROM Product p WHERE p.id IN " +
+           "(SELECT oi.productId FROM OrderItem oi " +
+           "GROUP BY oi.productId ORDER BY SUM(oi.quantity) DESC)")
+    List<Product> findBestSellingProducts(Pageable pageable);
+    
+    // Time range queries
+    @Query("SELECT p FROM Product p WHERE p.createdAt BETWEEN :startDate AND :endDate")
+    List<Product> findProductsByDateRange(@Param("startDate") java.time.LocalDateTime startDate, 
+                                          @Param("endDate") java.time.LocalDateTime endDate, 
+                                          Pageable pageable);
 }
+

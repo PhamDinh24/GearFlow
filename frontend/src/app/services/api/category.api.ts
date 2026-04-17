@@ -4,7 +4,7 @@ import { CategoryDTO } from '../../types';
 class CategoryApiService extends BaseApiService {
   async getCategories(): Promise<CategoryDTO[]> {
     const response = await this.fetchWithTimeout(
-      this.buildUrl('/categories'),
+      this.buildUrl('/products/categories'),
       {
         method: 'GET',
         headers: this.getHeaders(false),
@@ -15,7 +15,7 @@ class CategoryApiService extends BaseApiService {
 
   async getCategoryById(id: string): Promise<CategoryDTO> {
     const response = await this.fetchWithTimeout(
-      this.buildUrl(`/categories/${id}`),
+      this.buildUrl(`/products/categories/${id}`),
       {
         method: 'GET',
         headers: this.getHeaders(false),
@@ -26,7 +26,7 @@ class CategoryApiService extends BaseApiService {
 
   async createCategory(data: { name: string; description?: string }): Promise<CategoryDTO> {
     const response = await this.fetchWithTimeout(
-      this.buildUrl('/categories'),
+      this.buildUrl('/products/categories'),
       {
         method: 'POST',
         headers: this.getHeaders(true),
@@ -38,7 +38,7 @@ class CategoryApiService extends BaseApiService {
 
   async updateCategory(id: string, data: { name: string; description?: string }): Promise<CategoryDTO> {
     const response = await this.fetchWithTimeout(
-      this.buildUrl(`/categories/${id}`),
+      this.buildUrl(`/products/categories/${id}`),
       {
         method: 'PUT',
         headers: this.getHeaders(true),
@@ -50,7 +50,7 @@ class CategoryApiService extends BaseApiService {
 
   async deleteCategory(id: string): Promise<void> {
     const response = await this.fetchWithTimeout(
-      this.buildUrl(`/categories/${id}`),
+      this.buildUrl(`/products/categories/${id}`),
       {
         method: 'DELETE',
         headers: this.getHeaders(true),

@@ -27,7 +27,17 @@ public class CacheConfig {
             "top_products",
             "sales_report",
             "reviews",
-            "wishlists"
+            "wishlists",
+            "related_products",
+            "latest_products",
+            "best_selling_products",
+            "products_by_date",
+            "popular_with_category",
+            "random_products",
+            "customer_recommendations",
+            "product_analytics",
+            "customer_analytics",
+            "sales_analytics"
         );
     }
 }

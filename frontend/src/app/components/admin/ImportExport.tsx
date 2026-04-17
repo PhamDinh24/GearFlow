@@ -14,10 +14,10 @@ import {
   Users,
   ShoppingCart
 } from "lucide-react";
-import { productApi, orderApi, userApi, brandApi, categoryApi } from "../../services/api";
+import { productApi, adminApi, userApi, brandApi, categoryApi } from "../../services/api";
 import { toast } from "sonner";
 
-export function AdminImportExport() {
+export function ImportExport() {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -61,7 +61,7 @@ export function AdminImportExport() {
   const exportOrders = async () => {
     try {
       setExporting(true);
-      const orders = await orderApi.getAllOrders();
+      const orders = await adminApi.getAllOrders();
       
       const csvData = [
         ['ID', 'User ID', 'Tổng Tiền', 'Trạng Thái', 'Địa Chỉ', 'Thành Phố', 'SĐT', 'Ngày Tạo'],
@@ -435,4 +435,3 @@ export function AdminImportExport() {
   );
 }
 
-export { AdminImportExport as ImportExport };

@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { ShoppingCart, User, Heart, LayoutDashboard, LogOut } from "lucide-react";
+import { ShoppingCart, User, Heart, LayoutDashboard, LogOut, Keyboard, Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { Input } from "./ui/input";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import {
@@ -18,41 +20,76 @@ export function Root() {
   const { cartCount } = useCart();
   const isAdmin = location.pathname.startsWith('/admin');
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-50">
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg"></div>
-              <span className="font-bold text-xl">GearFlow</span>
+            <Link to="/" className="flex items-center space-x-2 group">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-300 flex items-center justify-center">
+                <Keyboard className="text-white w-6 h-6" />
+              </div>
+              <span className="font-black text-2xl tracking-tighter text-slate-900">GEAR<span className="text-blue-600">FLOW</span></span>
             </Link>
 
             {!isAdmin && (
-              <nav className="hidden md:flex items-center space-x-8">
-                <Link to="/" className="text-gray-700 hover:text-gray-900">
-                  Trang chủ
-                </Link>
-                <Link to="/shop" className="text-gray-700 hover:text-gray-900">
-                  Sản phẩm
-                </Link>
-                {isAuthenticated && (
-                  <>
-                    <Link to="/wishlist" className="text-gray-700 hover:text-gray-900">
-                      Yêu thích
+              <nav className="hidden md:flex items-center space-x-10">
+                {[
+                  { name: 'Trang chủ', path: '/' },
+                  { name: 'Sản phẩm', path: '/shop' },
+                  { name: 'Yêu thích', path: '/wishlist' },
+                  { name: 'Đơn hàng', path: '/orders' },
+                ].map((link) => {
+                  const isActive = location.pathname === link.path;
+                  if (!isAuthenticated && (link.path === '/wishlist' || link.path === '/orders')) return null;
+                  
+                  return (
+                    <Link 
+                      key={link.path}
+                      to={link.path} 
+                      className={`relative py-2 text-sm font-bold transition-colors group ${
+                        isActive ? 'text-blue-600' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {link.name}
+                      <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 transform origin-left transition-transform duration-300 ${
+                        isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+                      }`} />
                     </Link>
-                    <Link to="/orders" className="text-gray-700 hover:text-gray-900">
-                      Đơn hàng
-                    </Link>
-                  </>
-                )}
+                  );
+                })}
               </nav>
+            )}
+
+            {!isAdmin && (
+              <div className="flex-1 max-w-md mx-8 hidden lg:block">
+                <form onSubmit={handleSearchSubmit} className="relative">
+                  <Input 
+                    type="text"
+                    placeholder="Tìm kiếm phím cơ, keycap..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-50 border-none rounded-xl pl-10 h-10 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-400"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                </form>
+              </div>
             )}
 
             <div className="flex items-center space-x-4">
@@ -152,68 +189,69 @@ export function Root() {
 
       {/* Footer */}
       {!isAdmin && (
-        <footer className="bg-gray-900 text-white mt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div>
-                <h3 className="font-bold text-lg mb-4">GearFlow</h3>
-                <p className="text-gray-400 text-sm">
-                  Chuyên cung cấp bàn phím cơ cao cấp cho mọi nhu cầu
+        <footer className="bg-slate-950 text-white mt-0 border-t border-slate-900 py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
+              <div className="md:col-span-4">
+                <Link to="/" className="flex items-center space-x-2 mb-6 group">
+                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-300">
+                    <Keyboard className="text-white w-6 h-6" />
+                  </div>
+                  <span className="font-black text-2xl tracking-tighter">GEAR<span className="text-blue-600">FLOW</span></span>
+                </Link>
+                <p className="text-slate-400 text-sm leading-relaxed max-w-sm mb-8">
+                  Chuyên cung cấp bàn phím cơ và phụ kiện Custom cao cấp. Chúng tôi mang đến cảm giác gõ tốt nhất cho mọi đối tượng từ làm việc đến chơi game chuyên nghiệp.
                 </p>
-                <div className="mt-4 flex space-x-4">
-                  <Link to="/" className="text-gray-400 hover:text-white">
-                    <span className="sr-only">Facebook</span>
-                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/>
-                    </svg>
-                  </Link>
-                  <Link to="/" className="text-gray-400 hover:text-white">
-                    <span className="sr-only">Instagram</span>
-                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z"/>
-                    </svg>
-                  </Link>
+                <div className="flex space-x-5">
+                   {['facebook', 'instagram', 'twitter', 'youtube'].map((social) => (
+                    <a key={social} href="#" className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all duration-300 shadow-lg border border-slate-800">
+                      <span className="sr-only">{social}</span>
+                      <div className="w-2 h-2 rounded-full bg-current" />
+                    </a>
+                  ))}
                 </div>
               </div>
-              <div>
-                <h4 className="font-semibold mb-4">Liên kết</h4>
-                <ul className="space-y-2 text-sm text-gray-400">
-                  <li><Link to="/" className="hover:text-white">Trang chủ</Link></li>
-                  <li><Link to="/shop" className="hover:text-white">Sản phẩm</Link></li>
-                  {isAuthenticated && (
-                    <>
-                      <li><Link to="/orders" className="hover:text-white">Đơn hàng</Link></li>
-                      <li><Link to="/wishlist" className="hover:text-white">Yêu thích</Link></li>
-                    </>
-                  )}
+              
+              <div className="md:col-span-2">
+                <h4 className="font-bold text-white mb-6 uppercase tracking-wider text-xs">Mua Sắm</h4>
+                <ul className="space-y-4 text-sm text-slate-400">
+                  <li><Link to="/shop" className="hover:text-blue-400 transition-colors">Tất cả sản phẩm</Link></li>
+                  <li><Link to="/shop" className="hover:text-blue-400 transition-colors">Bàn phím cơ</Link></li>
+                  <li><Link to="/shop" className="hover:text-blue-400 transition-colors">Keycap Sets</Link></li>
+                  <li><Link to="/shop" className="hover:text-blue-400 transition-colors">Custom Kits</Link></li>
                 </ul>
               </div>
-              <div>
-                <h4 className="font-semibold mb-4">Chính sách</h4>
-                <ul className="space-y-2 text-sm text-gray-400">
-                  <li><a href="#" className="hover:text-white">Chính sách bảo hành</a></li>
-                  <li><a href="#" className="hover:text-white">Chính sách đổi trả</a></li>
-                  <li><a href="#" className="hover:text-white">Chính sách vận chuyển</a></li>
-                  <li><a href="#" className="hover:text-white">Điều khoản sử dụng</a></li>
+
+              <div className="md:col-span-2">
+                <h4 className="font-bold text-white mb-6 uppercase tracking-wider text-xs">Hỗ Trợ</h4>
+                <ul className="space-y-4 text-sm text-slate-400">
+                  <li><a href="#" className="hover:text-blue-400 transition-colors">Chính sách bảo hành</a></li>
+                  <li><a href="#" className="hover:text-blue-400 transition-colors">Chính sách đổi trả</a></li>
+                  <li><a href="#" className="hover:text-blue-400 transition-colors">Vận chuyển</a></li>
+                  <li><a href="#" className="hover:text-blue-400 transition-colors">Điều khoản</a></li>
                 </ul>
               </div>
-              <div>
-                <h4 className="font-semibold mb-4">Liên hệ</h4>
-                <ul className="space-y-2 text-sm text-gray-400">
-                  <li>Hotline: 1900-xxxx</li>
-                  <li>Email: support@gearflow.vn</li>
-                  <li>Địa chỉ: Hà Nội, Việt Nam</li>
-                  <li className="pt-2">
-                    <span className="text-white">Giờ làm việc:</span><br/>
-                    T2-T6: 8:00 - 18:00<br/>
-                    T7-CN: 9:00 - 17:00
-                  </li>
-                </ul>
+
+              <div className="md:col-span-4">
+                <h4 className="font-bold text-white mb-6 uppercase tracking-wider text-xs">Bản Tin</h4>
+                <p className="text-sm text-slate-400 mb-4">Đăng ký để nhận sớm các ưu đãi đặc biệt và cập nhật mới nhất.</p>
+                <div className="flex gap-2">
+                  <input 
+                    type="email" 
+                    placeholder="Email của bạn..." 
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-white"
+                  />
+                  <Button className="bg-blue-600 hover:bg-blue-700 px-6 rounded-xl font-bold">Gửi</Button>
+                </div>
               </div>
             </div>
-            <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-              <p>© 2026 GearFlow. All rights reserved.</p>
-              <p className="mt-2">Designed with ❤️ for keyboard enthusiasts</p>
+            
+            <div className="border-t border-slate-900 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center text-[13px] text-slate-500">
+              <p>© 2026 GearFlow Team. All rights reserved.</p>
+              <div className="flex space-x-8 mt-4 md:mt-0">
+                <a href="#" className="hover:text-slate-300">Quyền riêng tư</a>
+                <a href="#" className="hover:text-slate-300">Điều khoản dịch vụ</a>
+              </div>
             </div>
           </div>
         </footer>
