@@ -41,11 +41,12 @@ export function Root() {
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center space-x-2 group">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-300 flex items-center justify-center">
-                <Keyboard className="text-white w-6 h-6" />
-              </div>
-              <span className="font-black text-2xl tracking-tighter text-slate-900">GEAR<span className="text-blue-600">FLOW</span></span>
+            <Link to="/" className="flex items-center space-x-3 group">
+              <img 
+                src="/logo.svg" 
+                alt="GearFlow" 
+                className="h-10 group-hover:scale-105 transition-transform duration-300"
+              />
             </Link>
 
             {!isAdmin && (
@@ -193,11 +194,12 @@ export function Root() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
               <div className="md:col-span-4">
-                <Link to="/" className="flex items-center space-x-2 mb-6 group">
-                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-300">
-                    <Keyboard className="text-white w-6 h-6" />
-                  </div>
-                  <span className="font-black text-2xl tracking-tighter">GEAR<span className="text-blue-600">FLOW</span></span>
+                <Link to="/" className="flex items-center space-x-3 mb-6 group">
+                  <img 
+                    src="/logo.svg" 
+                    alt="GearFlow" 
+                    className="h-10 group-hover:scale-105 transition-transform duration-300"
+                  />
                 </Link>
                 <p className="text-slate-400 text-sm leading-relaxed max-w-sm mb-8">
                   Chuyên cung cấp bàn phím cơ và phụ kiện Custom cao cấp. Chúng tôi mang đến cảm giác gõ tốt nhất cho mọi đối tượng từ làm việc đến chơi game chuyên nghiệp.

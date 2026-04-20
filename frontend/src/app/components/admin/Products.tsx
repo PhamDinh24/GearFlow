@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
+import { Pagination } from "../ui/pagination";
 import { AdminPageWrapper } from "./PageWrapper";
 import { 
   Dialog, 
@@ -39,6 +40,17 @@ import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType } fr
 import jsPDF from 'jspdf';
 import Papa from 'papaparse';
 import mammoth from 'mammoth';
+import { 
+  exportToExcel, 
+  exportToPDF, 
+  exportToWord,
+  exportToExcelTable,
+  formatDateForExport,
+  formatCurrencyForExport,
+  generateFilename
+} from "../../utils/exportUtils";
+
+const ITEMS_PER_PAGE = 12;
 
 export function Products() {
   const [products, setProducts] = useState<ProductDTO[]>([]);
@@ -47,6 +59,7 @@ export function Products() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importText, setImportText] = useState('');
   const [importing, setImporting] = useState(false);
@@ -79,7 +92,15 @@ export function Products() {
         index === self.findIndex(p => p.id === product.id)
       );
       
-      setProducts(uniqueProducts);
+      // Sort products by createdAt (newest first) if available, otherwise by name
+      const sortedProducts = uniqueProducts.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        return a.name.localeCompare(b.name);
+      });
+      
+      setProducts(sortedProducts);
       setCategories(categoriesRes);
       setBrands(brandsRes);
     } catch (error) {
@@ -90,110 +111,110 @@ export function Products() {
     }
   };
 
-  const exportToExcel = () => {
-    const data = filteredProducts.map(product => {
+  const exportToExcelHandler = () => {
+    const metadata = {
+      'Hệ thống': 'GearFlow Management',
+      'Ngày xuất': formatDateForExport(new Date().toISOString()),
+      'Người xuất': 'Administrator',
+      'Tổng số': `${filteredProducts.length} sản phẩm`,
+    };
+
+    const headers = ['STT', 'Tên sản phẩm', 'Giá gốc', 'Danh mục', 'Thương hiệu', 'Tồn kho', 'Biến thể', 'Trạng thái'];
+    
+    const data = filteredProducts.map((product, index) => {
       const category = categories.find(c => c.id === product.categoryId);
       const brand = brands.find(b => b.id === product.brandId);
       const totalStock = product.variants?.reduce((sum, v) => sum + (v.stock || v.availableStock || 0), 0) || 0;
       
-      return {
-        'Tên sản phẩm': product.name,
-        'Mô tả': product.description || '',
-        'Giá gốc': product.basePrice,
-        'Danh mục': category?.name || '',
-        'Thương hiệu': brand?.name || '',
-        'Hỗ trợ': product.support || '',
-        'URL hình ảnh': product.imageUrl || '',
-        'Tồn kho': totalStock,
-        'Biến thể': product.variants?.length || 0
-      };
+      return [
+        index + 1,
+        product.name,
+        formatCurrencyForExport(product.basePrice),
+        category?.name || '-',
+        brand?.name || '-',
+        totalStock,
+        product.variants?.length || 0,
+        totalStock === 0 ? 'Hết hàng' : totalStock <= 10 ? 'Sắp hết' : 'Còn hàng',
+      ];
     });
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Sản phẩm');
-    XLSX.writeFile(wb, `danh-sach-san-pham-${new Date().toISOString().split('T')[0]}.xlsx`);
-    toast.success('Đã xuất file Excel');
+    const result = exportToExcelTable(
+      'DANH SÁCH SẢN PHẨM',
+      metadata,
+      headers,
+      data,
+      generateFilename('danh-sach-san-pham')
+    );
+    
+    if (result.success) {
+      toast.success('Đã xuất file Excel thành công');
+    } else {
+      toast.error('Lỗi khi xuất file Excel');
+    }
   };
 
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Danh Sách Sản Phẩm', 20, 20);
-    
-    let y = 40;
-    filteredProducts.forEach((product, index) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-      
+  const exportToPDFHandler = () => {
+    const headers = ['Tên sản phẩm', 'Giá gốc', 'Danh mục', 'Thương hiệu', 'Tồn kho', 'Biến thể', 'Ngày tạo'];
+    const data = filteredProducts.map((product) => {
       const category = categories.find(c => c.id === product.categoryId);
       const brand = brands.find(b => b.id === product.brandId);
       const totalStock = product.variants?.reduce((sum, v) => sum + (v.stock || v.availableStock || 0), 0) || 0;
       
-      doc.setFontSize(12);
-      doc.text(`${index + 1}. ${product.name}`, 20, y);
-      doc.setFontSize(10);
-      doc.text(`Giá: ${product.basePrice.toLocaleString('vi-VN')}đ | Tồn kho: ${totalStock}`, 20, y + 5);
-      doc.text(`Danh mục: ${category?.name || ''} | Thương hiệu: ${brand?.name || ''}`, 20, y + 10);
-      y += 20;
+      return [
+        product.name,
+        formatCurrencyForExport(product.basePrice),
+        category?.name || '-',
+        brand?.name || '-',
+        String(totalStock),
+        `${product.variants?.length || 0} biến thể`,
+        product.createdAt ? new Date(product.createdAt).toLocaleDateString('vi-VN') : '-',
+      ];
     });
+
+    const result = exportToPDF(
+      'Danh Sách Sản Phẩm',
+      headers,
+      data,
+      generateFilename('danh-sach-san-pham')
+    );
     
-    doc.save(`danh-sach-san-pham-${new Date().toISOString().split('T')[0]}.pdf`);
-    toast.success('Đã xuất file PDF');
+    if (result.success) {
+      toast.success('Đã xuất file PDF thành công');
+    } else {
+      toast.error('Lỗi khi xuất file PDF');
+    }
   };
 
-  const exportToWord = async () => {
-    const tableRows = [
-      new TableRow({
-        children: [
-          new TableCell({ children: [new Paragraph('Tên sản phẩm')] }),
-          new TableCell({ children: [new Paragraph('Giá gốc')] }),
-          new TableCell({ children: [new Paragraph('Danh mục')] }),
-          new TableCell({ children: [new Paragraph('Thương hiệu')] }),
-          new TableCell({ children: [new Paragraph('Tồn kho')] })
-        ]
-      })
-    ];
-
-    filteredProducts.forEach(product => {
+  const exportToWordHandler = async () => {
+    const headers = ['Tên sản phẩm', 'Giá gốc', 'Danh mục', 'Thương hiệu', 'Tồn kho', 'Biến thể', 'Ngày tạo'];
+    const data = filteredProducts.map((product) => {
       const category = categories.find(c => c.id === product.categoryId);
       const brand = brands.find(b => b.id === product.brandId);
       const totalStock = product.variants?.reduce((sum, v) => sum + (v.stock || v.availableStock || 0), 0) || 0;
       
-      tableRows.push(new TableRow({
-        children: [
-          new TableCell({ children: [new Paragraph(product.name)] }),
-          new TableCell({ children: [new Paragraph(product.basePrice.toString())] }),
-          new TableCell({ children: [new Paragraph(category?.name || '')] }),
-          new TableCell({ children: [new Paragraph(brand?.name || '')] }),
-          new TableCell({ children: [new Paragraph(totalStock.toString())] })
-        ]
-      }));
+      return [
+        product.name,
+        formatCurrencyForExport(product.basePrice),
+        category?.name || '-',
+        brand?.name || '-',
+        String(totalStock),
+        `${product.variants?.length || 0} biến thể`,
+        product.createdAt ? new Date(product.createdAt).toLocaleDateString('vi-VN') : '-',
+      ];
     });
 
-    const table = new Table({
-      rows: tableRows,
-      width: { size: 100, type: WidthType.PERCENTAGE }
-    });
-
-    const doc = new Document({
-      sections: [{
-        children: [
-          new Paragraph({ text: 'Danh Sách Sản Phẩm', heading: 'Heading1' }),
-          table
-        ]
-      }]
-    });
-
-    const buffer = await Packer.toBuffer(doc);
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `danh-sach-san-pham-${new Date().toISOString().split('T')[0]}.docx`;
-    link.click();
-    toast.success('Đã xuất file Word');
+    const result = await exportToWord(
+      'Danh Sách Sản Phẩm',
+      headers,
+      data,
+      generateFilename('danh-sach-san-pham')
+    );
+    
+    if (result.success) {
+      toast.success('Đã xuất file Word thành công');
+    } else {
+      toast.error('Lỗi khi xuất file Word');
+    }
   };
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -494,6 +515,17 @@ export function Products() {
     return matchesSearch && matchesCategory;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter]);
+
   // Calculate stats
   const stats = {
     total: products.length,
@@ -541,15 +573,15 @@ export function Products() {
             <RefreshCcw className="w-4 h-4 mr-2" />
             Làm mới
           </Button>
-          <Button onClick={exportToExcel} variant="outline">
+          <Button onClick={exportToExcelHandler} variant="outline">
             <FileSpreadsheet className="w-4 h-4 mr-2" />
             Xuất Excel
           </Button>
-          <Button onClick={exportToPDF} variant="outline">
+          <Button onClick={exportToPDFHandler} variant="outline">
             <FileText className="w-4 h-4 mr-2" />
             Xuất PDF
           </Button>
-          <Button onClick={exportToWord} variant="outline">
+          <Button onClick={exportToWordHandler} variant="outline">
             <File className="w-4 h-4 mr-2" />
             Xuất Word
           </Button>
@@ -575,83 +607,119 @@ export function Products() {
         </>
       )}
     >
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Tổng Sản Phẩm</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+      {/* Stats Cards - Enhanced with Modern Design */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="relative overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 group hover:-translate-y-2 ring-4 ring-blue-500/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-0 group-hover:opacity-5 transition-opacity duration-500" />
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-50 rounded-full opacity-20 group-hover:scale-150 transition-transform duration-700" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-50 rounded-full opacity-10 group-hover:scale-150 transition-transform duration-700" />
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">Tổng Sản Phẩm</p>
+                <h3 className="text-3xl font-black text-gray-900 tracking-tight">{stats.total}</h3>
+                <p className="text-xs text-gray-400 mt-1 font-medium">Tất cả sản phẩm</p>
               </div>
-              <div className="p-3 bg-blue-50 rounded-full">
-                <Package className="w-6 h-6 text-blue-600" />
+              <div className="p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                <Package className="w-6 h-6 text-white" />
               </div>
+            </div>
+            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-1000 ease-out" style={{ width: '75%' }} />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Còn Hàng</p>
-                <p className="text-2xl font-bold">{stats.inStock}</p>
+        <Card className="relative overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 group hover:-translate-y-2 ring-4 ring-green-500/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-emerald-600 opacity-0 group-hover:opacity-5 transition-opacity duration-500" />
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-green-50 rounded-full opacity-20 group-hover:scale-150 transition-transform duration-700" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-green-50 rounded-full opacity-10 group-hover:scale-150 transition-transform duration-700" />
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">Còn Hàng</p>
+                <h3 className="text-3xl font-black text-gray-900 tracking-tight">{stats.inStock}</h3>
+                <p className="text-xs text-gray-400 mt-1 font-medium">Tồn kho tốt</p>
               </div>
-              <div className="p-3 bg-green-50 rounded-full">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="p-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                <CheckCircle className="w-6 h-6 text-white" />
               </div>
+            </div>
+            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-green-500 to-emerald-600 rounded-full transition-all duration-1000 ease-out" style={{ width: '75%' }} />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Sắp Hết</p>
-                <p className="text-2xl font-bold">{stats.lowStock}</p>
+        <Card className="relative overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 group hover:-translate-y-2 ring-4 ring-yellow-500/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500 to-yellow-600 opacity-0 group-hover:opacity-5 transition-opacity duration-500" />
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-50 rounded-full opacity-20 group-hover:scale-150 transition-transform duration-700" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-yellow-50 rounded-full opacity-10 group-hover:scale-150 transition-transform duration-700" />
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">Sắp Hết</p>
+                <h3 className="text-3xl font-black text-gray-900 tracking-tight">{stats.lowStock}</h3>
+                <p className="text-xs text-gray-400 mt-1 font-medium">Cần nhập thêm</p>
               </div>
-              <div className="p-3 bg-yellow-50 rounded-full">
-                <AlertTriangle className="w-6 h-6 text-yellow-600" />
+              <div className="p-4 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                <AlertTriangle className="w-6 h-6 text-white" />
               </div>
+            </div>
+            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-full transition-all duration-1000 ease-out" style={{ width: '45%' }} />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Hết Hàng</p>
-                <p className="text-2xl font-bold">{stats.outOfStock}</p>
+        <Card className="relative overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 group hover:-translate-y-2 ring-4 ring-red-500/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-red-600 opacity-0 group-hover:opacity-5 transition-opacity duration-500" />
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-50 rounded-full opacity-20 group-hover:scale-150 transition-transform duration-700" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-red-50 rounded-full opacity-10 group-hover:scale-150 transition-transform duration-700" />
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">Hết Hàng</p>
+                <h3 className="text-3xl font-black text-gray-900 tracking-tight">{stats.outOfStock}</h3>
+                <p className="text-xs text-gray-400 mt-1 font-medium">Cần nhập ngay</p>
               </div>
-              <div className="p-3 bg-red-50 rounded-full">
-                <TrendingDown className="w-6 h-6 text-red-600" />
+              <div className="p-4 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                <TrendingDown className="w-6 h-6 text-white" />
               </div>
+            </div>
+            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all duration-1000 ease-out" style={{ width: '25%' }} />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Products Table */}
-      <Card>
-        <CardHeader>
+      {/* Products Table - Enhanced */}
+      <Card className="border-none shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <CardTitle>Danh Sách Sản Phẩm</CardTitle>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-600 rounded-lg">
+                <Package className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">Danh Sách Sản Phẩm</CardTitle>
+                <p className="text-sm text-gray-500 mt-0.5">{filteredProducts.length} sản phẩm</p>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <Button onClick={loadData} variant="outline" size="sm">
                 <RefreshCcw className="w-4 h-4 mr-2" />
                 Làm mới
               </Button>
-              <Button onClick={() => { setEditingProduct(null); setShowDialog(true); }} size="sm">
+              <Button onClick={() => { setEditingProduct(null); setShowDialog(true); }} size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Thêm Sản Phẩm
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="flex gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -663,7 +731,7 @@ export function Products() {
               />
             </div>
             <select
-              className="border rounded px-4 py-2 min-w-[200px]"
+              className="border rounded-lg px-4 py-2 min-w-[200px] bg-white hover:border-blue-400 transition-colors"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
@@ -676,49 +744,70 @@ export function Products() {
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
-                  <th className="text-left p-4 font-semibold">Sản Phẩm</th>
-                  <th className="text-left p-4 font-semibold">Danh Mục</th>
-                  <th className="text-left p-4 font-semibold">Thương Hiệu</th>
-                  <th className="text-left p-4 font-semibold">Giá Gốc</th>
-                  <th className="text-left p-4 font-semibold">Biến Thể</th>
-                  <th className="text-left p-4 font-semibold">Tồn Kho</th>
-                  <th className="text-left p-4 font-semibold">Trạng Thái</th>
-                  <th className="text-left p-4 font-semibold">Thao Tác</th>
+                  <th className="text-left p-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Sản Phẩm</th>
+                  <th className="text-left p-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Danh Mục</th>
+                  <th className="text-left p-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Thương Hiệu</th>
+                  <th className="text-left p-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Giá Gốc</th>
+                  <th className="text-left p-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Biến Thể</th>
+                  <th className="text-left p-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Tồn Kho</th>
+                  <th className="text-left p-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Trạng Thái</th>
+                  <th className="text-left p-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Thao Tác</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.map(product => {
+                {paginatedProducts.map(product => {
                   const category = categories.find(c => c.id === product.categoryId);
                   const brand = brands.find(b => b.id === product.brandId);
                   const totalStock = product.variants?.reduce((sum, v) => sum + (v.stock || v.availableStock || 0), 0) || 0;
                   
                   return (
-                    <tr key={product.id} className="border-b hover:bg-gray-50 transition-colors">
+                    <tr key={product.id} className="border-b hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50 transition-all duration-200 group">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <img 
-                            src={product.imageUrl || 'https://via.placeholder.com/50'} 
-                            alt={product.name}
-                            className="w-12 h-12 object-cover rounded"
-                          />
+                          <div className="relative">
+                            <img 
+                              src={product.imageUrl || 'https://via.placeholder.com/50'} 
+                              alt={product.name}
+                              className="w-14 h-14 object-cover rounded-xl shadow-md group-hover:shadow-lg transition-shadow border-2 border-gray-100"
+                            />
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
+                              <Package className="w-3 h-3 text-white" />
+                            </div>
+                          </div>
                           <div>
-                            <div className="font-semibold">{product.name}</div>
-                            <div className="text-xs text-gray-500">{product.support}</div>
+                            <div className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{product.name}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{product.support}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4">{category?.name || '-'}</td>
-                      <td className="p-4">{brand?.name || '-'}</td>
-                      <td className="p-4 font-semibold">{product.basePrice.toLocaleString('vi-VN')}đ</td>
                       <td className="p-4">
-                        <Badge variant="secondary">
+                        <Badge variant="secondary" className="bg-purple-100 text-purple-700 font-medium">
+                          {category?.name || '-'}
+                        </Badge>
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 font-medium">
+                          {brand?.name || '-'}
+                        </Badge>
+                      </td>
+                      <td className="p-4">
+                        <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                          {product.basePrice.toLocaleString('vi-VN')}đ
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 font-bold">
                           {product.variants?.length || 0} biến thể
                         </Badge>
                       </td>
                       <td className="p-4">
-                        <span className="font-bold">{totalStock}</span>
+                        <span className={`text-2xl font-black ${
+                          totalStock === 0 ? 'text-red-600' :
+                          totalStock <= 10 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>{totalStock}</span>
                       </td>
                       <td className="p-4">
                         {getStockBadge(totalStock)}
@@ -729,6 +818,7 @@ export function Products() {
                             size="sm" 
                             variant="outline"
                             onClick={() => { setEditingProduct(product); setShowDialog(true); }}
+                            className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all"
                           >
                             <Edit className="w-4 h-4 mr-1" />
                             Sửa
@@ -737,6 +827,7 @@ export function Products() {
                             size="sm" 
                             variant="destructive"
                             onClick={() => handleDeleteProduct(product.id)}
+                            className="hover:shadow-lg transition-all"
                           >
                             <Trash2 className="w-4 h-4 mr-1" />
                             Xóa
@@ -751,11 +842,27 @@ export function Products() {
           </div>
 
           {filteredProducts.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              {searchQuery || categoryFilter !== 'ALL' 
-                ? 'Không tìm thấy sản phẩm nào' 
-                : 'Chưa có sản phẩm nào'}
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                <Package className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-500 font-medium">
+                {searchQuery || categoryFilter !== 'ALL' 
+                  ? 'Không tìm thấy sản phẩm nào' 
+                  : 'Chưa có sản phẩm nào'}
+              </p>
             </div>
+          )}
+
+          {/* Pagination */}
+          {filteredProducts.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredProducts.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              onPageChange={setCurrentPage}
+            />
           )}
         </CardContent>
       </Card>

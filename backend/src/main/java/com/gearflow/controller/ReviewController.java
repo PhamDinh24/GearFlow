@@ -23,7 +23,7 @@ public class ReviewController {
     private ReviewService reviewService;
 
     @PostMapping
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReviewDTO> createReview(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestBody Map<String, Object> request) {
@@ -37,7 +37,7 @@ public class ReviewController {
     }
 
     @PutMapping("/{reviewId}")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ReviewDTO> updateReview(
             @PathVariable String reviewId,
             @RequestBody Map<String, Object> request) {
@@ -50,7 +50,7 @@ public class ReviewController {
     }
 
     @DeleteMapping("/{reviewId}")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteReview(@PathVariable String reviewId) {
         log.info("DELETE /reviews/{}", reviewId);
         reviewService.deleteReview(reviewId);

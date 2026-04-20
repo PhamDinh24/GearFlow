@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, Link, useNavigate } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
-import { Home, LogOut, LayoutDashboard, Package, Tag, ShoppingCart, Users, Upload, Keyboard, Settings, FolderTree } from 'lucide-react';
+import { Home, LogOut, LayoutDashboard, Package, Tag, ShoppingCart, Users, Upload, Keyboard, Settings, FolderTree, Star } from 'lucide-react';
 import { Button } from '../ui/button';
 
 export function Header() {
@@ -18,10 +18,12 @@ export function Header() {
       <div className="max-w-[1600px] mx-auto px-6">
         <div className="flex items-center justify-between h-20">
           {/* Logo Section */}
-          <Link to="/" className="flex items-center gap-4 group">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300">
-              <Keyboard className="w-7 h-7 text-white" />
-            </div>
+          <Link to="/" className="flex items-center gap-3 group">
+            <img 
+              src="/favicon.svg" 
+              alt="GearFlow Logo" 
+              className="w-12 h-12 group-hover:scale-110 transition-transform duration-300"
+            />
             <div className="hidden sm:block">
                <h1 className="text-xl font-black tracking-tighter uppercase mb-0.5">GEARFLOW <span className="text-blue-500">ADMIN</span></h1>
                <div className="flex items-center gap-2">
@@ -40,6 +42,7 @@ export function Header() {
               { to: "/admin/brands", icon: Tag, label: "Thương Hiệu" },
               { to: "/admin/orders", icon: ShoppingCart, label: "Đơn Hàng" },
               { to: "/admin/customers", icon: Users, label: "Khách Hàng" },
+              { to: "/admin/reviews", icon: Star, label: "Đánh Giá" },
               { to: "/admin/import-export", icon: Upload, label: "Nhập/Xuất" },
             ].map((link) => (
               <NavLink

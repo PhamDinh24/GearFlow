@@ -1,17 +1,24 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { motion } from "framer-motion";
-import { orderApi } from "../../services/api";
+import { orderApi, reviewApi } from "../../services/api";
 import { OrderDTO } from "../../types";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Package, Eye, ChevronRight, ShoppingBag, Calendar, CreditCard } from "lucide-react";
+import { Pagination } from "../ui/pagination";
+import { Package, Eye, ChevronRight, ShoppingBag, Calendar, CreditCard, Star, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "../../context/AuthContext";
+
+const ITEMS_PER_PAGE = 12;
 
 export function OrderHistory() {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<OrderDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewCounts, setReviewCounts] = useState<Record<string, { reviewed: number; total: number }>>({});
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     loadOrders();
@@ -20,7 +27,35 @@ export function OrderHistory() {
   const loadOrders = async () => {
     try {
       const data = await orderApi.getOrders();
-      setOrders(data);
+      
+      // Sort orders by createdAt (newest first)
+      const sortedOrders = data.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      
+      setOrders(sortedOrders);
+      
+      // Load review counts for delivered orders
+      const counts: Record<string, { reviewed: number; total: number }> = {};
+      for (const order of sortedOrders) {
+        if (order.status === 'DELIVERED' && order.items) {
+          let reviewedCount = 0;
+          for (const item of order.items) {
+            try {
+              const productReviews = await reviewApi.getProductReviews(item.productId);
+              const userReview = productReviews.find(r => r.userId === user?.id);
+              if (userReview) reviewedCount++;
+            } catch (error) {
+              // Ignore errors
+            }
+          }
+          counts[order.id] = {
+            reviewed: reviewedCount,
+            total: order.items.length
+          };
+        }
+      }
+      setReviewCounts(counts);
     } catch (error) {
       console.error('Error loading orders:', error);
       toast.error('Không thể tải danh sách đơn hàng');
@@ -36,6 +71,12 @@ export function OrderHistory() {
     DELIVERED: { label: 'Hoàn thành', color: 'text-emerald-600', bg: 'bg-emerald-50' },
     CANCELLED: { label: 'Đã hủy', color: 'text-red-600', bg: 'bg-red-50' },
   };
+
+  // Pagination
+  const totalPages = Math.ceil(orders.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedOrders = orders.slice(startIndex, endIndex);
 
   if (loading) {
     return (
@@ -82,7 +123,7 @@ export function OrderHistory() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {orders.map((order, index) => {
+            {paginatedOrders.map((order, index) => {
               const status = statusMap[order.status] || statusMap.PENDING;
               return (
                 <motion.div
@@ -129,6 +170,16 @@ export function OrderHistory() {
                         </div>
                         
                         <div className="flex items-center gap-6">
+                           {/* Review Status for Delivered Orders */}
+                           {order.status === 'DELIVERED' && reviewCounts[order.id] && (
+                             <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-full border border-yellow-200">
+                               <Star className="w-4 h-4 text-yellow-600 fill-yellow-400" />
+                               <span className="text-xs font-bold text-yellow-700">
+                                 {reviewCounts[order.id].reviewed}/{reviewCounts[order.id].total} đã đánh giá
+                               </span>
+                             </div>
+                           )}
+                           
                            <div className="text-right">
                               <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-0.5">Tổng thanh toán</p>
                               <p className="text-2xl font-black text-blue-600 tracking-tighter">
@@ -147,6 +198,19 @@ export function OrderHistory() {
                 </motion.div>
               );
             })}
+
+            {/* Pagination */}
+            {orders.length > 0 && (
+              <div className="mt-8">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={orders.length}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

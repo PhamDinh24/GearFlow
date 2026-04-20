@@ -14,6 +14,7 @@ export { shippingApi } from './shipping.api';
 export { wishlistApi } from './wishlist.api';
 export { attributeApi } from './attribute.api';
 export { recommendationApi, customerRecommendationApi } from './recommendation.api';
+export { reviewApi } from './review.api';
 
 // Export base classes and types
 export { BaseApiService, ApiError, API_BASE_URL } from './base';

@@ -23,6 +23,7 @@ import { Categories } from "./components/admin/Categories";
 import { Orders } from "./components/admin/Orders";
 import { Customers } from "./components/admin/Customers";
 import { ImportExport } from "./components/admin/ImportExport";
+import { Reviews } from "./components/admin/Reviews";
 import { Header } from "./components/admin/Header";
 
 // Common components
@@ -62,6 +63,7 @@ export const router = createBrowserRouter([
       { path: "categories", Component: Categories },
       { path: "orders", Component: Orders },
       { path: "customers", Component: Customers },
+      { path: "reviews", Component: Reviews },
       { path: "import-export", Component: ImportExport },
     ],
   },
