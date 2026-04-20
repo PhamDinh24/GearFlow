@@ -1,0 +1,57 @@
+# Render Blueprint for GearFlow
+# This file defines all services needed to deploy GearFlow
+
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: gearflow-db
+    env: docker
+    plan: free
+    region: singapore
+    databases:
+      - name: gearflow
+        user: gearflow_user
+
+  # Backend API (Spring Boot)
+  - type: web
+    name: gearflow-backend
+    env: java
+    region: singapore
+    plan: free
+    buildCommand: cd backend && mvn clean package -DskipTests
+    startCommand: cd backend && java -jar target/gearflow-api-1.0.0.jar
+    healthCheckPath: /api/actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gearflow-db
+          property: connectionString
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m
+      - key: SERVER_PORT
+        value: 8080
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: 86400000
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+  # Frontend (React + Vite)
+  - type: web
+    name: gearflow-frontend
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm run preview -- --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: gearflow-backend
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NODE_ENV
+        value: production
