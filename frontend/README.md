@@ -1,407 +1,279 @@
 # GearFlow Frontend
 
-Frontend application for GearFlow mechanical keyboard e-commerce system.
+Modern e-commerce frontend for mechanical keyboards built with React, TypeScript, and Tailwind CSS.
 
-## 🛠️ Technology Stack
+## 🚀 Tech Stack
 
-- **React 18** - UI library
+- **React 18.3** - UI library
 - **TypeScript** - Type safety
-- **Vite** - Build tool & dev server
-- **React Router** - Routing
-- **Tailwind CSS** - Styling
+- **Vite 6.3** - Build tool
+- **Tailwind CSS 4.1** - Styling
+- **React Router 7.13** - Routing
 - **Radix UI** - Accessible components
 - **Lucide React** - Icons
-
-## 📋 System Requirements
-
-- Node.js 16+ or higher
-- npm 8+ or yarn
-
-## 🚀 Installation and Setup
-
-### 1. Install Dependencies
-
-```bash
-npm install
-```
-
-Or with yarn:
-
-```bash
-yarn install
-```
-
-### 2. Environment Configuration
-
-Create `.env` file (if needed):
-
-```env
-VITE_API_BASE_URL=http://localhost:8080/api
-```
-
-Default API URL is `http://localhost:8080/api`
-
-### 3. Start Development Server
-
-```bash
-npm run dev
-```
-
-Or:
-
-```bash
-yarn dev
-```
-
-Application runs at: **http://localhost:5173**
-
-### 4. Build Production
-
-```bash
-npm run build
-```
-
-Build output: `dist/`
-
-### 5. Preview Production Build
-
-```bash
-npm run preview
-```
+- **Recharts** - Charts for admin
+- **Embla Carousel** - Product carousels
+- **Motion** - Animations
+- **Sonner** - Toast notifications
 
 ## 📁 Project Structure
 
 ```
-frontend/
-├── public/              # Static assets
-├── src/
-│   ├── app/
-│   │   ├── components/  # React components
-│   │   │   ├── ui/     # Reusable UI components
-│   │   │   ├── Admin*.tsx  # Admin pages
-│   │   │   └── *.tsx   # Other components
-│   │   ├── services/   # API services
-│   │   │   └── api.ts  # API client
-│   │   ├── routes.tsx  # Route configuration
-│   │   └── App.tsx     # Main app component
-│   ├── index.css       # Global styles
-│   └── main.tsx        # Entry point
-├── index.html
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── tailwind.config.js
+frontend/src/
+├── app/
+│   ├── components/
+│   │   ├── layout/          # Layout components (Header, Footer)
+│   │   ├── ui/              # shadcn/ui components
+│   │   ├── figma/           # Figma-specific components
+│   │   ├── Home.tsx         # Home page
+│   │   ├── Shop.tsx         # Product listing
+│   │   ├── ProductDetail.tsx
+│   │   ├── Cart.tsx
+│   │   ├── Checkout.tsx
+│   │   ├── Login.tsx
+│   │   ├── Register.tsx
+│   │   ├── UserProfile.tsx
+│   │   ├── OrderHistory.tsx
+│   │   ├── Wishlist.tsx
+│   │   ├── ChangePassword.tsx
+│   │   ├── PaymentResult.tsx
+│   │   ├── Admin*.tsx       # Admin pages
+│   │   └── NotFound.tsx
+│   ├── context/
+│   │   └── AuthContext.tsx  # Authentication context
+│   ├── data/
+│   │   └── mockData.ts      # Mock data for development
+│   ├── hooks/               # Custom React hooks
+│   ├── services/            # API services
+│   ├── types/               # TypeScript types
+│   ├── utils/               # Utility functions
+│   ├── App.tsx
+│   └── routes.tsx
+├── lib/
+│   └── utils.ts             # Utility functions
+├── styles/
+│   ├── index.css            # Main styles
+│   ├── tailwind.css         # Tailwind directives
+│   ├── theme.css            # Theme variables
+│   └── fonts.css            # Font imports
+└── main.tsx                 # Entry point
 ```
 
-## 🎨 Components
+## 🎨 Design System
 
-### Public Pages
+### Colors
+- **Primary**: Indigo (600-700)
+- **Secondary**: Purple (600-700)
+- **Accent**: Pink (600-700)
+- **Neutral**: Slate (50-900)
 
-- **Home** - Homepage
-- **Products** - Product list
-- **ProductDetail** - Product details
-- **Cart** - Shopping cart
-- **Checkout** - Checkout
-- **Login** - Login
-- **Register** - Register
+### Typography
+- **Font Family**: System font stack
+- **Headings**: Bold, tracking-tight
+- **Body**: Regular, leading-relaxed
 
-### Admin Pages
+### Spacing
+- **Border Radius**: 
+  - Small: 8px (rounded-lg)
+  - Medium: 12px (rounded-xl)
+  - Large: 16px (rounded-2xl)
+- **Shadows**: Subtle, layered
 
-- **AdminLayout** - Layout wrapper with auth protection
-- **AdminDashboard** - Dashboard with statistics
-- **AdminProducts** - Product management (CRUD)
-- **AdminOrders** - Order management
-- **AdminCustomers** - Customer management
-- **AdminInventory** - Inventory management
-- **AdminNav** - Sidebar navigation
+## 🛠️ Development
 
-### UI Components (Radix UI)
+### Prerequisites
+- Node.js 18+
+- npm or pnpm
+- **Backend API running on `http://localhost:8080/api`**
 
-- Button
-- Card
-- Dialog
-- Input
-- Label
-- Select
-- Table
-- Toast
-
-## 🔐 Authentication
-
-### Login Flow
-
-1. User enters username/password
-2. Call API `/api/auth/login`
-3. Receive JWT token
-4. Save token to localStorage
-5. Redirect to home or admin
-
-### Protected Routes
-
-Admin routes are protected by `AdminLayout`:
-
-```tsx
-<Route path="/admin" element={<AdminLayout />}>
-  <Route index element={<AdminDashboard />} />
-  <Route path="products" element={<AdminProducts />} />
-  <Route path="orders" element={<AdminOrders />} />
-  <Route path="customers" element={<AdminCustomers />} />
-  <Route path="inventory" element={<AdminInventory />} />
-</Route>
-```
-
-Non-admin users are redirected to homepage.
-
-## 📡 API Integration
-
-### API Service
-
-File: `src/app/services/api.ts`
-
-```typescript
-import { apiService } from '../services/api';
-
-// Public endpoints
-const products = await apiService.getProducts();
-const product = await apiService.getProductById(id);
-
-// Auth endpoints
-const response = await apiService.login({ username, password });
-const user = await apiService.register({ username, password });
-
-// Admin endpoints (requires auth)
-const stats = await apiService.getAnalytics();
-await apiService.createProduct(data);
-await apiService.updateOrderStatus(orderId, status);
-```
-
-### Error Handling
-
-API service automatically handles:
-- Token expired (401) → Logout and redirect
-- Network errors → Fallback data
-- Request deduplication → Avoid duplicate calls
-- Response cloning → Avoid "body stream already read"
-
-## 🎨 Styling
-
-### Tailwind CSS
-
-Use Tailwind utility classes:
-
-```tsx
-<div className="flex items-center justify-between p-4 bg-white rounded-lg shadow">
-  <h1 className="text-2xl font-bold">Title</h1>
-  <Button className="bg-blue-500 hover:bg-blue-600">Click</Button>
-</div>
-```
-
-### Custom Styles
-
-Global styles in `src/index.css`:
-
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    /* ... */
-  }
-}
-```
-
-## 🧪 Testing
-
-### Run Tests (if available)
-
+### Installation
 ```bash
-npm run test
+cd frontend
+npm install
 ```
 
-### Manual Testing
-
-1. Start backend: `cd backend && mvn spring-boot:run`
-2. Start frontend: `npm run dev`
-3. Login with admin/password123
-4. Test admin features
-
-See details: `../docs/TESTING_GUIDE.md`
-
-## 🐛 Troubleshooting
-
-### Error: API connection refused
-
-- Check backend is running on port 8080
-- Check CORS in backend `application.yml`
-
-### Error: React warnings
-
-Fixed:
-- ✅ Uncontrolled input warnings
-- ✅ Missing Dialog description
-- ✅ forwardRef issues
-
-### Error: Build warnings
-
-- Chunk size warning is normal
-- Can increase limit in `vite.config.ts`:
-
-```ts
-export default defineConfig({
-  build: {
-    chunkSizeWarningLimit: 1000
-  }
-})
+### Environment Configuration
+Create a `.env` file in the frontend root:
+```env
+VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
-## 📱 Responsive Design
+### Development Server
+```bash
+npm run dev
+```
 
-Application is responsive for:
-- Desktop (1920px+)
-- Laptop (1024px - 1919px)
-- Tablet (768px - 1023px)
-- Mobile (< 768px)
+The app will be available at `http://localhost:5173`
 
-Test responsive:
-1. F12 → Toggle device toolbar
-2. Select device preset
-3. Test navigation and forms
-
-## 🚀 Production Deployment
-
-### Build
-
+### Build for Production
 ```bash
 npm run build
 ```
 
-### Deploy to Vercel
+### Preview Production Build
+```bash
+npm run preview
+```
+
+## 📱 Features
+
+### User Features
+- ✅ Browse products with filters
+- ✅ Search with autocomplete
+- ✅ Product detail with variants
+- ✅ Shopping cart management
+- ✅ Checkout process
+- ✅ User authentication (JWT)
+- ✅ User profile management
+- ✅ Order history
+- ✅ Wishlist
+- ✅ Product reviews
+- ✅ Payment integration (VNPay)
+
+### Admin Features
+- ✅ Dashboard with statistics
+- ✅ Product management (CRUD)
+- ✅ Inventory management
+- ✅ Order management
+- ✅ Customer management
+- ✅ Category management
+- ✅ Brand management
+- ✅ Review management
+- ✅ Reports and analytics
+
+## 🔐 Authentication
+
+The app uses JWT-based authentication with:
+- Access token (24h expiry)
+- Refresh token (7 days expiry)
+- Secure HTTP-only cookies
+- Role-based access control (USER, ADMIN)
+
+## 🎯 API Integration
+
+### Service Layer
+All API calls go through the service layer in `src/app/services/`:
+
+- **`api.ts`** - Axios instance with JWT interceptors
+- **`authService.ts`** - Login, register, logout
+- **`productService.ts`** - Product listing, search, filtering
+- **`cartService.ts`** - Shopping cart management
+- **`orderService.ts`** - Order creation and tracking
+- **`wishlistService.ts`** - Wishlist management
+- **`reviewService.ts`** - Product reviews
+- **`shippingAddressService.ts`** - Delivery addresses
+
+### API Configuration
+- **Development**: `http://localhost:8080/api`
+- **Production**: Configured via `VITE_API_BASE_URL` environment variable
+
+### Authentication Flow
+1. User logs in via `/login`
+2. Backend returns `accessToken` and `refreshToken`
+3. Tokens stored in localStorage
+4. `accessToken` sent in `Authorization: Bearer {token}` header
+5. On 401 error, auto-refresh using `refreshToken`
+6. If refresh fails, redirect to login
+
+### Axios Interceptors
+- **Request**: Automatically adds JWT token to headers
+- **Response**: Handles token refresh on 401 errors
+
+## 📦 Components
+
+### UI Components (shadcn/ui)
+All UI components are based on Radix UI and styled with Tailwind CSS:
+- Accordion, Alert Dialog, Avatar
+- Badge, Button, Card
+- Checkbox, Dialog, Dropdown Menu
+- Form, Input, Label
+- Select, Separator, Sheet
+- Table, Tabs, Toast
+- And more...
+
+### Layout Components
+- **Root**: Main layout with header, footer, and navigation
+- **AdminNav**: Admin sidebar navigation
+
+### Page Components
+Each page is a standalone component with its own logic and styling.
+
+## 🌐 Routing
+
+Routes are defined in `src/app/routes.tsx` using React Router v7:
+- `/` - Home
+- `/shop` - Product listing
+- `/product/:id` - Product detail
+- `/cart` - Shopping cart
+- `/checkout` - Checkout
+- `/login` - Login
+- `/register` - Register
+- `/profile` - User profile
+- `/orders` - Order history
+- `/wishlist` - Wishlist
+- `/admin/*` - Admin pages
+
+## 🎨 Styling
+
+### Tailwind CSS
+The project uses Tailwind CSS v4 with custom configuration:
+- Custom color palette
+- Custom spacing scale
+- Custom typography
+- Dark mode support (future)
+
+### CSS Variables
+Theme variables are defined in `styles/theme.css`:
+```css
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --primary: 239 84% 67%;
+  --secondary: 280 87% 65%;
+  /* ... */
+}
+```
+
+## 📱 Responsive Design
+
+The app is fully responsive with breakpoints:
+- `sm`: 640px
+- `md`: 768px
+- `lg`: 1024px
+- `xl`: 1280px
+- `2xl`: 1536px
+
+## ♿ Accessibility
+
+- Semantic HTML
+- ARIA labels
+- Keyboard navigation
+- Focus management
+- Screen reader support
+
+## 🚀 Performance
+
+- Code splitting with React.lazy
+- Image optimization
+- Lazy loading
+- Memoization
+- Virtual scrolling (for large lists)
+
+## 🧪 Testing
 
 ```bash
-npm install -g vercel
-vercel
+# Run tests (to be implemented)
+npm test
 ```
 
-### Deploy to Netlify
+## 📝 License
 
-```bash
-npm install -g netlify-cli
-netlify deploy --prod
-```
+Copyright © 2026 GearFlow. All rights reserved.
 
-### Deploy to Static Hosting
+## 👥 Team
 
-Upload `dist/` folder to:
-- AWS S3 + CloudFront
-- Firebase Hosting
-- GitHub Pages
-- Nginx/Apache
+Developed by the GearFlow team.
 
-### Environment Variables
+## 📞 Support
 
-Production `.env`:
-
-```env
-VITE_API_BASE_URL=https://api.yourdomain.com/api
-```
-
-## 🔧 Configuration
-
-### Vite Config
-
-File: `vite.config.ts`
-
-```typescript
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      }
-    }
-  }
-})
-```
-
-### TypeScript Config
-
-File: `tsconfig.json`
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020", "DOM"],
-    "jsx": "react-jsx",
-    "strict": true
-  }
-}
-```
-
-## 📦 Dependencies
-
-### Main Dependencies
-
-```json
-{
-  "react": "^18.2.0",
-  "react-dom": "^18.2.0",
-  "react-router": "^6.x",
-  "lucide-react": "^0.x"
-}
-```
-
-### Dev Dependencies
-
-```json
-{
-  "typescript": "^5.x",
-  "vite": "^5.x",
-  "tailwindcss": "^3.x",
-  "@types/react": "^18.x"
-}
-```
-
-## 🎯 Features
-
-### Implemented
-
-✅ User authentication (login/register)
-✅ Product browsing with search & filters
-✅ Shopping cart
-✅ Wishlist
-✅ Order management
-✅ Admin dashboard
-✅ Product management (CRUD)
-✅ Order management
-✅ Customer management
-✅ Inventory management
-✅ Responsive design
-
-### Todo
-
-- [ ] Payment integration (VNPay)
-- [ ] Email notifications
-- [ ] Product reviews
-- [ ] Advanced search
-- [ ] Order tracking
-- [ ] Analytics charts
-
-## 📚 Documentation
-
-- [React Documentation](https://react.dev/)
-- [Vite Documentation](https://vitejs.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Radix UI](https://www.radix-ui.com/)
-- [React Router](https://reactrouter.com/)
-
-## 📄 License
-
-MIT License
+For support, email support@gearflow.vn or visit our website.

@@ -108,6 +108,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
 
+        // Use TreeMap to auto-sort keys alphabetically (required by VNPay)
         Map<String, String> vnpParams = new TreeMap<>();
         vnpParams.put("vnp_Version", "2.1.0");
         vnpParams.put("vnp_Command", "pay");
@@ -115,7 +116,7 @@ public class PaymentService {
         vnpParams.put("vnp_Amount", String.valueOf(payment.getAmount().multiply(java.math.BigDecimal.valueOf(100)).longValue()));
         vnpParams.put("vnp_CurrCode", "VND");
         vnpParams.put("vnp_TxnRef", payment.getOrderId());
-        vnpParams.put("vnp_OrderInfo", "Payment for order " + payment.getOrderId());
+        vnpParams.put("vnp_OrderInfo", "Thanh toan don hang " + payment.getOrderId());
         vnpParams.put("vnp_OrderType", "other");
         vnpParams.put("vnp_Locale", "vn");
         vnpParams.put("vnp_ReturnUrl", vnpayReturnUrl);
@@ -123,34 +124,48 @@ public class PaymentService {
         vnpParams.put("vnp_IpAddr", "127.0.0.1");
         vnpParams.put("vnp_ExpireDate", new SimpleDateFormat("yyyyMMddHHmmss").format(new Date(System.currentTimeMillis() + 900000)));
 
-        String signData = buildSignData(vnpParams);
-        log.debug("Sign data for payment {}: {}", paymentId, signData);
+        // Step 1: Build sign data with RAW values (no encoding) - this is what VNPay hashes
+        String signData = buildSignDataRaw(vnpParams);
+        log.info("VNPay sign data (raw): {}", signData);
         
         String vnpSecureHash = hmacSHA512(vnpayHashSecret, signData);
-        log.debug("Generated VNPay hash: {}", vnpSecureHash.substring(0, Math.min(16, vnpSecureHash.length())) + "...");
+        log.info("VNPay secure hash: {}", vnpSecureHash);
         
-        Map<String, String> result = new HashMap<>(vnpParams);
-        result.put("vnp_SecureHash", vnpSecureHash);
-        result.put("vnp_SecureHashType", "SHA512");
-        result.put("vnp_ApiUrl", vnpayApiUrl);
+        // Step 2: Build URL with URL-encoded values (for HTTP transport)
+        String queryString = buildQueryStringEncoded(vnpParams);
+        String paymentUrl = vnpayApiUrl + "?" + queryString + "&vnp_SecureHash=" + vnpSecureHash;
+        log.info("VNPay payment URL: {}", paymentUrl);
         
-        log.info("VNPay request generated for order: {}, amount: {}, TMN: {}", 
-            payment.getOrderId(), payment.getAmount(), vnpayTmnCode);
+        Map<String, String> result = new HashMap<>();
+        result.put("paymentUrl", paymentUrl);
+        
         return result;
     }
 
     @Transactional
     public PaymentDTO verifyPayment(Map<String, String> params) {
-        log.info("Verifying VNPay payment callback");
+        log.info("Verifying VNPay payment callback with params: {}", params.keySet());
         
         String vnpSecureHash = params.get("vnp_SecureHash");
-        params.remove("vnp_SecureHash");
-        params.remove("vnp_SecureHashType");
+        
+        // Build a new TreeMap without hash fields for verification
+        // Params from callback are already URL-decoded by Spring (raw values)
+        Map<String, String> verifyParams = new TreeMap<>();
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            if (!"vnp_SecureHash".equals(entry.getKey()) && !"vnp_SecureHashType".equals(entry.getKey())) {
+                verifyParams.put(entry.getKey(), entry.getValue());
+            }
+        }
 
-        String signData = buildSignData(new TreeMap<>(params));
+        // Use RAW values for verification (same as when signing)
+        String signData = buildSignDataRaw(verifyParams);
         String computedHash = hmacSHA512(vnpayHashSecret, signData);
 
-        if (!computedHash.equals(vnpSecureHash)) {
+        log.info("Verify - Received Hash: {}", vnpSecureHash);
+        log.info("Verify - Computed Hash: {}", computedHash);
+
+        if (!computedHash.equalsIgnoreCase(vnpSecureHash)) {
+            log.error("Payment verification failed - hash mismatch. SignData: {}", signData);
             throw new BusinessException("Invalid payment signature");
         }
 
@@ -208,15 +223,63 @@ public class PaymentService {
         return toDTO(payment);
     }
 
-    private String buildSignData(Map<String, String> params) {
-        StringBuilder signData = new StringBuilder();
+    public List<PaymentDTO> getAllPayments() {
+        return paymentRepository.findAll().stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::toDTO)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Build sign data with RAW (un-encoded) values.
+     * This is what VNPay uses to compute/verify the HMAC hash.
+     * Format: key1=value1&key2=value2 (sorted by key, no URL encoding)
+     */
+    private String buildSignDataRaw(Map<String, String> params) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
         for (Map.Entry<String, String> entry : params.entrySet()) {
-            if (signData.length() > 0) {
-                signData.append("&");
+            String key = entry.getKey();
+            String value = entry.getValue();
+            if ("vnp_SecureHash".equals(key) || "vnp_SecureHashType".equals(key) || "vnp_ApiUrl".equals(key)) {
+                continue;
             }
-            signData.append(entry.getKey()).append("=").append(entry.getValue());
+            if (value != null && !value.isEmpty()) {
+                if (!first) sb.append("&");
+                sb.append(key).append("=").append(value); // RAW value, no encoding
+                first = false;
+            }
         }
-        return signData.toString();
+        return sb.toString();
+    }
+
+    /**
+     * Build URL query string with URL-encoded values.
+     * This is used for the actual HTTP redirect URL.
+     * Format: key1=encoded1&key2=encoded2 (sorted by key, values URL-encoded)
+     */
+    private String buildQueryStringEncoded(Map<String, String> params) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            if ("vnp_SecureHash".equals(key) || "vnp_SecureHashType".equals(key) || "vnp_ApiUrl".equals(key)) {
+                continue;
+            }
+            if (value != null && !value.isEmpty()) {
+                if (!first) sb.append("&");
+                try {
+                    sb.append(URLEncoder.encode(key, StandardCharsets.UTF_8.toString()));
+                    sb.append("=");
+                    sb.append(URLEncoder.encode(value, StandardCharsets.UTF_8.toString()).replace("+", "%20"));
+                } catch (UnsupportedEncodingException e) {
+                    log.error("Encoding error for field: {}", key, e);
+                }
+                first = false;
+            }
+        }
+        return sb.toString();
     }
 
     private String hmacSHA512(String key, String data) {

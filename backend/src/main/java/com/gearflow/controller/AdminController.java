@@ -45,10 +45,18 @@ public class AdminController {
 
     @GetMapping("/dashboard/top-products")
     public ResponseEntity<List<Map<String, Object>>> getTopProducts(
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "5") int limit) {
         log.info("GET /api/admin/dashboard/top-products - Limit: {}", limit);
         List<Map<String, Object>> topProducts = adminService.getTopProducts(limit);
         return ResponseEntity.ok(topProducts);
+    }
+
+    @GetMapping("/dashboard/top-brands")
+    public ResponseEntity<List<Map<String, Object>>> getTopBrands(
+            @RequestParam(defaultValue = "3") int limit) {
+        log.info("GET /api/admin/dashboard/top-brands - Limit: {}", limit);
+        List<Map<String, Object>> topBrands = adminService.getTopBrands(limit);
+        return ResponseEntity.ok(topBrands);
     }
 
     @GetMapping("/dashboard/sales-report")
@@ -125,6 +133,12 @@ public class AdminController {
     }
 
     // Order Management
+    @GetMapping("/payments")
+    public ResponseEntity<List<com.gearflow.dto.PaymentDTO>> getAllPayments() {
+        log.info("GET /api/admin/payments");
+        return ResponseEntity.ok(adminService.getAllPayments());
+    }
+
     @PutMapping("/orders/{id}/status")
     public ResponseEntity<OrderDTO> updateOrderStatus(
             @PathVariable String id,

@@ -22,7 +22,7 @@ type FilterOption = 'all' | '5' | '4' | '3' | '2' | '1';
 const ITEMS_PER_PAGE = 12;
 
 export function ProductReviews({ productId, productName }: ProductReviewsProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const [reviews, setReviews] = useState<ReviewDTO[]>([]);
   const [averageRating, setAverageRating] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -107,7 +107,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
   }, [searchQuery, sortBy, filterRating]);
 
   const handleSubmitReview = async () => {
-    if (!isAuthenticated) {
+    if (!isLoggedIn) {
       toast.error('Vui lòng đăng nhập để đánh giá');
       return;
     }
@@ -215,7 +215,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
               <CardTitle className="text-2xl font-bold">Đánh Giá Sản Phẩm</CardTitle>
               <p className="text-sm text-gray-500 mt-1">{productName}</p>
             </div>
-            {isAuthenticated && !userHasReviewed && (
+            {isLoggedIn && !userHasReviewed && (
               <Button
                 onClick={() => {
                   setEditingReview(null);
@@ -368,7 +368,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
                     ? 'Không tìm thấy đánh giá phù hợp' 
                     : 'Chưa có đánh giá nào cho sản phẩm này'}
                 </p>
-                {isAuthenticated && !userHasReviewed && !searchQuery && filterRating === 'all' && (
+                {isLoggedIn && !userHasReviewed && !searchQuery && filterRating === 'all' && (
                   <Button
                     onClick={() => {
                       setEditingReview(null);

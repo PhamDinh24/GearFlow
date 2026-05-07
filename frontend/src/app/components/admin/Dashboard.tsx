@@ -4,55 +4,31 @@ import { Button } from '../ui/button';
 import { AdminPageWrapper } from './PageWrapper';
 import { orderApi, productApi, userApi, brandApi, categoryApi, adminApi } from '../../services/api';
 import { 
-  Package, 
+  TrendingUp, 
   ShoppingCart, 
-  Users, 
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
-  Download,
-  FileSpreadsheet,
-  FileText,
-  File,
-  RefreshCcw,
-  ArrowUpRight,
-  ArrowDownRight,
-  Eye,
-  Clock,
-  CheckCircle2,
-  XCircle,
+  Package, 
+  Users,
   AlertTriangle,
-  Sparkles,
-  BarChart3,
-  PieChart as PieChartIcon,
-  Activity,
-  Calendar
+  Eye,
+  Tag,
+  Award,
+  MessageSquare,
+  BarChart2
 } from 'lucide-react';
-import {
-  LineChart,
-  Line,
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer
+  Legend
 } from 'recharts';
+import { Link } from 'react-router';
 import { toast } from 'sonner';
-import { 
-  exportToExcel, 
-  exportToPDF, 
-  exportToWord,
-  exportToExcelTable,
-  formatDateForExport,
-  formatCurrencyForExport,
-  generateFilename
-} from '../../utils/exportUtils';
 
 interface DashboardStats {
   totalOrders: number;
@@ -62,13 +38,11 @@ interface DashboardStats {
   recentOrders: any[];
   ordersByStatus: Record<string, number>;
   revenueByDate: Array<{ date: string; revenue: number; fullDate?: string }>;
-  topProducts: Array<{ id: string; name: string; soldCount: number; revenue: number }>;
-  topBrands: Array<{ id: string; name: string; soldCount: number }>;
-  topCategories: Array<{ id: string; name: string; soldCount: number }>;
-  lowStockProducts: Array<{ id: string; name: string; stock: number }>;
+  topProducts: Array<{ id: string; name: string; soldCount: number; revenue: number; imageUrl?: string }>;
+  lowStockProducts: Array<{ id: string; name: string; stock: number; image?: string }>;
 }
 
-export const Dashboard: React.FC = () => {
+export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalOrders: 0,
     totalRevenue: 0,
@@ -78,17 +52,9 @@ export const Dashboard: React.FC = () => {
     ordersByStatus: {},
     revenueByDate: [],
     topProducts: [],
-    topBrands: [],
-    topCategories: [],
     lowStockProducts: []
   });
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState<string>(
-    new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]
-  );
-  const [endDate, setEndDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
 
   useEffect(() => {
     loadDashboardData();
@@ -98,37 +64,19 @@ export const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      const [orders, products, users, brands, categoriesRes, backendStats] = await Promise.all([
+      const [orders, productsRes, users, backendStats] = await Promise.all([
         adminApi.getAllOrders(),
-        productApi.getProducts(0, 1000).then(res => Array.isArray(res) ? res : (res?.content || [])),
+        productApi.getProducts(0, 1000),
         userApi.getAllUsers(),
-        brandApi.getBrands(),
-        categoryApi.getCategories(),
         adminApi.getDashboardStats()
       ]);
 
-      const categories = Array.isArray(categoriesRes) ? categoriesRes : [];
-
-      console.log('Dashboard loaded:', { 
-        orders: orders.length, 
-        products: products.length, 
-        users: users.length,
-        brands: brands.length,
-        categories: categories.length,
-        backendStats
-      });
+      const products = Array.isArray(productsRes) ? productsRes : (productsRes?.content || []);
 
       // Calculate stats
       const deliveredOrders = orders.filter(o => o.status === 'DELIVERED');
       const totalRevenue = backendStats.totalRevenue || deliveredOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
       
-      // Orders by status
-      const ordersByStatus = orders.reduce((acc, order) => {
-        acc[order.status] = (acc[order.status] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      // Revenue by date (last 7 days)
       const last7Days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date();
         date.setDate(date.getDate() - i);
@@ -140,15 +88,11 @@ export const Dashboard: React.FC = () => {
           order.status === 'DELIVERED' && order.createdAt && order.createdAt.startsWith(date)
         );
         const revenue = dayDeliveredOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-        const formattedDate = new Date(date).toLocaleDateString('vi-VN', { 
-          month: 'short', 
-          day: 'numeric' 
-        });
-        return { date: formattedDate, revenue, fullDate: date };
+        const formattedDate = new Date(date).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' });
+        return { date: formattedDate, revenue, fullDate: date, month: formattedDate };
       });
 
-      // Top Products (by order items)
-      const productSales: Record<string, { count: number; revenue: number; name: string }> = {};
+      const productSales: Record<string, { count: number; revenue: number; name: string; imageUrl?: string }> = {};
       orders.forEach(order => {
         if (order.items && Array.isArray(order.items)) {
           order.items.forEach((item: any) => {
@@ -172,942 +116,265 @@ export const Dashboard: React.FC = () => {
         .map(([id, data]) => ({
           id,
           name: data.name,
-          imageUrl: data.imageUrl,
+          sold: data.count,
           soldCount: data.count,
-          revenue: data.revenue
+          revenue: data.revenue,
+          imageUrl: data.imageUrl
         }))
         .sort((a, b) => b.soldCount - a.soldCount)
-        .slice(0, 3);
+        .slice(0, 5);
 
-      // Top Brands
-      const brandSales: Record<string, number> = {};
-      orders.forEach(order => {
-        if (order.items && Array.isArray(order.items)) {
-          order.items.forEach((item: any) => {
-            const product = products.find(p => p.id === item.productId);
-            if (product?.brandId) {
-              brandSales[product.brandId] = (brandSales[product.brandId] || 0) + (item.quantity || 0);
-            }
-          });
-        }
-      });
-
-      const topBrands = Object.entries(brandSales)
-        .map(([id, count]) => ({
-          id,
-          name: brands.find(b => b.id === id)?.name || id,
-          soldCount: count
-        }))
-        .sort((a, b) => b.soldCount - a.soldCount)
-        .slice(0, 3);
-
-      // Top Categories
-      const categorySales: Record<string, number> = {};
-      orders.forEach(order => {
-        if (order.items && Array.isArray(order.items)) {
-          order.items.forEach((item: any) => {
-            const product = products.find(p => p.id === item.productId);
-            if (product?.categoryId) {
-              categorySales[product.categoryId] = (categorySales[product.categoryId] || 0) + (item.quantity || 0);
-            }
-          });
-        }
-      });
-
-      const topCategories = Object.entries(categorySales)
-        .map(([id, count]) => ({
-          id,
-          name: categories.find(c => c.id === id)?.name || id,
-          soldCount: count
-        }))
-        .sort((a, b) => b.soldCount - a.soldCount)
-        .slice(0, 3);
-
-      // Low Stock Products
       const lowStockProducts = products
         .filter(p => {
-          if (!p.variants || !Array.isArray(p.variants)) return false;
-          const totalStock = p.variants.reduce((sum, v) => sum + (v.stock || v.availableStock || 0), 0);
+          const totalStock = p.variants?.reduce((sum: number, v: any) => sum + (v.stock || v.availableStock || 0), 0) || 0;
           return totalStock > 0 && totalStock <= 10;
         })
         .map(p => ({
           id: p.id,
           name: p.name,
-          stock: p.variants?.reduce((sum, v) => sum + (v.stock || v.availableStock || 0), 0) || 0
+          stock: p.variants?.reduce((sum: number, v: any) => sum + (v.stock || v.availableStock || 0), 0) || 0,
+          image: p.imageUrl
         }))
         .sort((a, b) => a.stock - b.stock)
         .slice(0, 5);
-
-      // Sort orders by createdAt (newest first) before taking recent orders
-      const sortedOrders = [...orders].sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
 
       setStats({
         totalOrders: backendStats.totalOrders || orders.length,
         totalRevenue,
         totalProducts: products.length,
         totalUsers: backendStats.totalUsers || users.length,
-        recentOrders: sortedOrders.slice(0, 5).map(o => {
-          const firstItem = o.items && o.items[0];
-          const product = products.find(p => p.id === firstItem?.productId);
-          return {
-            ...o,
-            userName: users.find((u: any) => u.id === o.userId)?.username || users.find((u: any) => u.id === o.userId)?.email || o.userId.substring(0, 8) + '...',
-            thumbnail: product?.imageUrl || ''
-          };
-        }),
-        ordersByStatus,
+        recentOrders: [],
+        ordersByStatus: {},
         revenueByDate,
         topProducts,
-        topBrands,
-        topCategories,
         lowStockProducts
       });
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      toast.error('Giao thức truy xuất dữ liệu thất bại');
     } finally {
       setLoading(false);
     }
   };
 
-  const exportToExcelHandler = () => {
-    const metadata = {
-      'Hệ thống': 'GearFlow Management System',
-      'Loại báo cáo': 'Dashboard & Thống Kê',
-      'Từ ngày': new Date(startDate).toLocaleDateString('vi-VN'),
-      'Đến ngày': new Date(endDate).toLocaleDateString('vi-VN'),
-      'Ngày xuất': new Date().toLocaleDateString('vi-VN', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
-      'Người xuất': 'Administrator'
-    };
-
-    const headers = ['STT', 'Chỉ Số', 'Giá Trị', 'Ghi Chú'];
-    
-    const data = [
-      [1, 'Tổng Đơn Hàng', stats.totalOrders, `${stats.recentOrders.length} đơn gần đây`],
-      [2, 'Tổng Doanh Thu', `${stats.totalRevenue.toLocaleString('vi-VN')}đ`, `${(stats.totalRevenue / 1000000).toFixed(1)}M VNĐ`],
-      [3, 'Tổng Sản Phẩm', stats.totalProducts, `${stats.lowStockProducts.length} sắp hết hàng`],
-      [4, 'Tổng Khách Hàng', stats.totalUsers, 'Đã đăng ký'],
-      [5, 'Đơn Chờ Xử Lý', stats.ordersByStatus['PENDING'] || 0, 'Cần xác nhận'],
-      [6, 'Đơn Đang Giao', (stats.ordersByStatus['PROCESSING'] || 0) + (stats.ordersByStatus['SHIPPED'] || 0), 'Đang vận chuyển'],
-      [7, 'Đơn Hoàn Thành', stats.ordersByStatus['DELIVERED'] || 0, 'Đã giao thành công'],
-      [8, 'Đơn Đã Hủy', stats.ordersByStatus['CANCELLED'] || 0, 'Bị hủy bỏ']
-    ];
-
-    const result = exportToExcelTable(
-      'BÁO CÁO DASHBOARD & THỐNG KÊ',
-      metadata,
-      headers,
-      data,
-      `dashboard-report-${new Date().toISOString().split('T')[0]}`
-    );
-    
-    if (result.success) {
-      toast.success('Đã xuất báo cáo Excel thành công');
-    } else {
-      toast.error('Lỗi khi xuất báo cáo Excel');
-    }
-  };
-
-  const exportToPDFHandler = () => {
-    const metadata = {
-      'Hệ thống': 'GearFlow Management System',
-      'Loại báo cáo': 'Dashboard & Thống Kê',
-      'Từ ngày': new Date(startDate).toLocaleDateString('vi-VN'),
-      'Đến ngày': new Date(endDate).toLocaleDateString('vi-VN'),
-      'Ngày xuất': new Date().toLocaleDateString('vi-VN', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
-      'Người xuất': 'Administrator'
-    };
-
-    const headers = ['STT', 'Chỉ Số', 'Giá Trị', 'Ghi Chú'];
-    const data = [
-      [1, 'Tổng Đơn Hàng', String(stats.totalOrders), `${stats.recentOrders.length} đơn gần đây`],
-      [2, 'Tổng Doanh Thu', `${stats.totalRevenue.toLocaleString('vi-VN')}đ`, `${(stats.totalRevenue / 1000000).toFixed(1)}M VNĐ`],
-      [3, 'Tổng Sản Phẩm', String(stats.totalProducts), `${stats.lowStockProducts.length} sắp hết hàng`],
-      [4, 'Tổng Khách Hàng', String(stats.totalUsers), 'Đã đăng ký'],
-      [5, 'Đơn Chờ Xử Lý', String(stats.ordersByStatus['PENDING'] || 0), 'Cần xác nhận'],
-      [6, 'Đơn Đang Giao', String((stats.ordersByStatus['PROCESSING'] || 0) + (stats.ordersByStatus['SHIPPED'] || 0)), 'Đang vận chuyển'],
-      [7, 'Đơn Hoàn Thành', String(stats.ordersByStatus['DELIVERED'] || 0), 'Đã giao thành công'],
-      [8, 'Đơn Đã Hủy', String(stats.ordersByStatus['CANCELLED'] || 0), 'Bị hủy bỏ']
-    ];
-
-    const result = exportToPDF(
-      'BÁO CÁO DASHBOARD & THỐNG KÊ',
-      headers,
-      data,
-      `dashboard-report-${new Date().toISOString().split('T')[0]}`,
-      metadata
-    );
-    
-    if (result.success) {
-      toast.success('Đã xuất báo cáo PDF thành công');
-    } else {
-      toast.error('Lỗi khi xuất báo cáo PDF');
-    }
-  };
-
-  const exportToWordHandler = async () => {
-    const metadata = {
-      'Hệ thống': 'GearFlow Management System',
-      'Loại báo cáo': 'Dashboard & Thống Kê',
-      'Từ ngày': new Date(startDate).toLocaleDateString('vi-VN'),
-      'Đến ngày': new Date(endDate).toLocaleDateString('vi-VN'),
-      'Ngày xuất': new Date().toLocaleDateString('vi-VN', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
-      'Người xuất': 'Administrator'
-    };
-
-    const headers = ['STT', 'Chỉ Số', 'Giá Trị', 'Ghi Chú'];
-    const data = [
-      [1, 'Tổng Đơn Hàng', String(stats.totalOrders), `${stats.recentOrders.length} đơn gần đây`],
-      [2, 'Tổng Doanh Thu', `${stats.totalRevenue.toLocaleString('vi-VN')}đ`, `${(stats.totalRevenue / 1000000).toFixed(1)}M VNĐ`],
-      [3, 'Tổng Sản Phẩm', String(stats.totalProducts), `${stats.lowStockProducts.length} sắp hết hàng`],
-      [4, 'Tổng Khách Hàng', String(stats.totalUsers), 'Đã đăng ký'],
-      [5, 'Đơn Chờ Xử Lý', String(stats.ordersByStatus['PENDING'] || 0), 'Cần xác nhận'],
-      [6, 'Đơn Đang Giao', String((stats.ordersByStatus['PROCESSING'] || 0) + (stats.ordersByStatus['SHIPPED'] || 0)), 'Đang vận chuyển'],
-      [7, 'Đơn Hoàn Thành', String(stats.ordersByStatus['DELIVERED'] || 0), 'Đã giao thành công'],
-      [8, 'Đơn Đã Hủy', String(stats.ordersByStatus['CANCELLED'] || 0), 'Bị hủy bỏ']
-    ];
-
-    const result = await exportToWord(
-      'BÁO CÁO DASHBOARD & THỐNG KÊ',
-      headers,
-      data,
-      `dashboard-report-${new Date().toISOString().split('T')[0]}`,
-      metadata
-    );
-    
-    if (result.success) {
-      toast.success('Đã xuất báo cáo Word thành công');
-    } else {
-      toast.error('Lỗi khi xuất báo cáo Word');
-    }
-  };
-
-  const StatCard = ({ 
-    title, 
-    value, 
-    icon: Icon, 
-    trend, 
-    trendValue,
-    subtitle,
-    color = 'blue'
-  }: { 
-    title: string; 
-    value: string | number; 
-    icon: any; 
-    trend?: 'up' | 'down';
-    trendValue?: string;
-    subtitle?: string;
-    color?: 'blue' | 'green' | 'purple' | 'orange' | 'pink' | 'indigo';
-  }) => {
-    const colorClasses = {
-      blue: {
-        bg: 'from-blue-500 to-blue-600',
-        light: 'bg-blue-50',
-        text: 'text-blue-600',
-        ring: 'ring-blue-500/20'
-      },
-      green: {
-        bg: 'from-green-500 to-emerald-600',
-        light: 'bg-green-50',
-        text: 'text-green-600',
-        ring: 'ring-green-500/20'
-      },
-      purple: {
-        bg: 'from-purple-500 to-purple-600',
-        light: 'bg-purple-50',
-        text: 'text-purple-600',
-        ring: 'ring-purple-500/20'
-      },
-      orange: {
-        bg: 'from-orange-500 to-orange-600',
-        light: 'bg-orange-50',
-        text: 'text-orange-600',
-        ring: 'ring-orange-500/20'
-      },
-      pink: {
-        bg: 'from-pink-500 to-pink-600',
-        light: 'bg-pink-50',
-        text: 'text-pink-600',
-        ring: 'ring-pink-500/20'
-      },
-      indigo: {
-        bg: 'from-indigo-500 to-indigo-600',
-        light: 'bg-indigo-50',
-        text: 'text-indigo-600',
-        ring: 'ring-indigo-500/20'
-      }
-    };
-
-    const colors = colorClasses[color];
-
-    return (
-      <Card className={`relative overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 group hover:-translate-y-2 ${colors.ring} ring-4`}>
-        {/* Animated Background Gradient */}
-        <div className={`absolute inset-0 bg-gradient-to-br ${colors.bg} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
-        
-        {/* Decorative Circles */}
-        <div className={`absolute -top-10 -right-10 w-32 h-32 ${colors.light} rounded-full opacity-20 group-hover:scale-150 transition-transform duration-700`} />
-        <div className={`absolute -bottom-10 -left-10 w-32 h-32 ${colors.light} rounded-full opacity-10 group-hover:scale-150 transition-transform duration-700`} />
-        
-        <CardContent className="p-6 relative z-10">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-500 mb-1 uppercase tracking-wider">{title}</p>
-              <div className="flex items-baseline gap-2">
-                <h3 className="text-3xl font-black text-gray-900 tracking-tight">{value}</h3>
-                {trend && trendValue && (
-                  <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                    trend === 'up' 
-                      ? 'bg-green-100 text-green-700' 
-                      : 'bg-red-100 text-red-700'
-                  }`}>
-                    {trend === 'up' ? (
-                      <ArrowUpRight className="w-3 h-3" />
-                    ) : (
-                      <ArrowDownRight className="w-3 h-3" />
-                    )}
-                    <span>{trendValue}</span>
-                  </div>
-                )}
-              </div>
-              {subtitle && (
-                <p className="text-xs text-gray-400 mt-1 font-medium">{subtitle}</p>
-              )}
-            </div>
-            
-            <div className={`p-4 bg-gradient-to-br ${colors.bg} rounded-2xl shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
-              <Icon className="w-6 h-6 text-white" />
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div 
-              className={`h-full bg-gradient-to-r ${colors.bg} rounded-full transition-all duration-1000 ease-out`}
-              style={{ width: trend === 'up' ? '75%' : '45%' }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   if (loading) {
     return (
-      <AdminPageWrapper>
-        <div className="flex items-center justify-center h-screen">Đang tải...</div>
-      </AdminPageWrapper>
+      <div className="bg-white min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="flex justify-center items-center">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-slate-600 font-medium">Đang tải dữ liệu...</p>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
-  return (
-    <AdminPageWrapper
-      title="Dashboard & Báo Cáo"
-      description="Tổng quan và thống kê toàn bộ dữ liệu kinh doanh"
-      actions={(
-        <>
-          <div className="flex gap-2 items-center">
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border rounded px-3 py-2 text-sm"
-            />
-            <span className="text-gray-500">-</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="border rounded px-3 py-2 text-sm"
-            />
-          </div>
-          <Button onClick={loadDashboardData} variant="outline">
-            <RefreshCcw className="w-4 h-4 mr-2" />
-            Làm mới
-          </Button>
-          <Button onClick={exportToExcelHandler} variant="outline" className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
-            <FileSpreadsheet className="w-4 h-4 mr-2" />
-            Xuất Excel
-          </Button>
-          <Button onClick={exportToPDFHandler} variant="outline" className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100">
-            <FileText className="w-4 h-4 mr-2" />
-            Xuất PDF
-          </Button>
-          <Button onClick={exportToWordHandler} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
-            <File className="w-4 h-4 mr-2" />
-            Xuất Word
-          </Button>
-        </>
-      )}
-    >
-      {/* Stats Grid - Enhanced */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="Tổng Đơn Hàng"
-          value={stats.totalOrders}
-          subtitle={`${stats.recentOrders.length} đơn gần đây`}
-          icon={ShoppingCart}
-          trend="up"
-          trendValue="+12.5%"
-          color="blue"
-        />
-        <StatCard
-          title="Doanh Thu"
-          value={`${(stats.totalRevenue / 1000000).toFixed(1)}M`}
-          subtitle={`${stats.totalRevenue.toLocaleString('vi-VN')}đ`}
-          icon={DollarSign}
-          trend="up"
-          trendValue="+8.2%"
-          color="green"
-        />
-        <StatCard
-          title="Sản Phẩm"
-          value={stats.totalProducts}
-          subtitle={`${stats.lowStockProducts.length} sắp hết hàng`}
-          icon={Package}
-          trend="up"
-          trendValue="+3"
-          color="purple"
-        />
-        <StatCard
-          title="Khách Hàng"
-          value={stats.totalUsers}
-          subtitle="Người dùng đã đăng ký"
-          icon={Users}
-          trend="up"
-          trendValue="+5.1%"
-          color="orange"
-        />
-      </div>
+  const statCards = [
+    {
+      title: 'Doanh thu',
+      value: `${(stats.totalRevenue / 1000000).toFixed(1)}M`,
+      icon: TrendingUp,
+      color: 'bg-green-100 text-green-600',
+    },
+    {
+      title: 'Đơn hàng',
+      value: stats.totalOrders.toString(),
+      icon: ShoppingCart,
+      color: 'bg-blue-100 text-blue-600',
+    },
+    {
+      title: 'Tổng sản phẩm',
+      value: stats.totalProducts.toString(),
+      icon: Package,
+      color: 'bg-purple-100 text-purple-600',
+    },
+    {
+      title: 'Khách hàng',
+      value: stats.totalUsers.toString(),
+      icon: Users,
+      color: 'bg-orange-100 text-orange-600',
+    },
+  ];
 
-      {/* Charts Section - Enhanced */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Revenue Line Chart - Larger */}
-        <Card className="lg:col-span-2 border-none shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-            <div className="flex items-center justify-between">
+  return (
+    <div className="bg-white min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold mb-3 text-slate-900">Tổng quan quản trị</h1>
+          <p className="text-lg text-slate-600">Theo dõi hoạt động kinh doanh và quản lý hệ thống</p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {statCards.map((stat) => (
+            <div key={stat.title} className="bg-white rounded-2xl border-2 border-slate-200 p-6 hover:shadow-xl hover:border-indigo-200 transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${stat.color} shadow-lg`}>
+                  <stat.icon className="w-7 h-7" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-bold mb-2 text-slate-900">{stat.value}</h3>
+              <p className="text-sm text-slate-600 font-medium">{stat.title}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Low Stock Alert */}
+        {stats.lowStockProducts.length > 0 && (
+          <div className="mb-10 border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 rounded-3xl overflow-hidden shadow-lg">
+            <div className="p-6 border-b border-orange-200 bg-white/50">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-600 rounded-lg">
-                  <Activity className="w-5 h-5 text-white" />
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center shadow-md">
+                  <AlertTriangle className="w-6 h-6 text-orange-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-bold">Doanh Thu 7 Ngày Qua</CardTitle>
-                  <p className="text-sm text-gray-500 mt-0.5">Theo dõi xu hướng doanh thu</p>
+                  <h3 className="text-xl font-bold text-orange-900">
+                    Cảnh báo tồn kho thấp
+                  </h3>
+                  <p className="text-sm text-orange-700 mt-1">
+                    {stats.lowStockProducts.length} sản phẩm cần nhập thêm hàng
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 rounded-full">
-                <TrendingUp className="w-4 h-4 text-green-600" />
-                <span className="text-sm font-bold text-green-700">+8.2%</span>
-              </div>
             </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={stats.revenueByDate}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#6b7280"
-                  style={{ fontSize: '12px', fontWeight: 600 }}
-                />
-                <YAxis 
-                  stroke="#6b7280"
-                  style={{ fontSize: '12px', fontWeight: 600 }}
-                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
-                />
-                <Tooltip 
-                  formatter={(value: number) => [`${(value / 1000).toFixed(0)}K VNĐ`, 'Doanh Thu']}
-                  contentStyle={{ 
-                    backgroundColor: '#fff',
-                    border: 'none',
-                    borderRadius: '12px',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                    padding: '12px'
-                  }}
-                  labelStyle={{ color: '#111827', fontWeight: 'bold', marginBottom: '4px' }}
-                />
-                <Legend 
-                  wrapperStyle={{ paddingTop: '20px' }}
-                  iconType="circle"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#3b82f6" 
-                  strokeWidth={3}
-                  name="Doanh Thu (VNĐ)"
-                  dot={{ fill: '#3b82f6', r: 5, strokeWidth: 2, stroke: '#fff' }}
-                  activeDot={{ r: 7, strokeWidth: 2 }}
-                  fill="url(#colorRevenue)"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Orders by Status Pie Chart - Compact */}
-        <Card className="border-none shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-600 rounded-lg">
-                <PieChartIcon className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-bold">Trạng Thái Đơn</CardTitle>
-                <p className="text-sm text-gray-500 mt-0.5">Phân bố đơn hàng</p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={Object.entries(stats.ordersByStatus).map(([status, count]) => ({
-                    name: status,
-                    value: count,
-                    label: status === 'PENDING' ? 'Chờ xử lý' :
-                           status === 'CONFIRMED' ? 'Đã xác nhận' :
-                           status === 'PROCESSING' ? 'Đang xử lý' :
-                           status === 'SHIPPED' ? 'Đang giao' :
-                           status === 'DELIVERED' ? 'Đã giao' :
-                           status === 'CANCELLED' ? 'Đã hủy' : status
-                  }))}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ label, percent }) => `${label}\n${(percent * 100).toFixed(0)}%`}
-                  outerRadius={90}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {Object.keys(stats.ordersByStatus).map((_, index) => {
-                    const colors = ['#eab308', '#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#ef4444'];
-                    return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                  })}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#fff',
-                    border: 'none',
-                    borderRadius: '12px',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                    padding: '12px'
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Top Performance Section - Enhanced */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Top Products */}
-        <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-          <CardHeader className="border-b bg-gradient-to-r from-yellow-50 to-orange-50">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg shadow-lg">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-bold">Top Sản Phẩm</CardTitle>
-                <p className="text-sm text-gray-500 mt-0.5">Bán chạy nhất</p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {stats.topProducts.map((product, index) => (
-                <div key={product.id} className="p-4 hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-50 transition-all duration-300 group cursor-pointer">
-                  <div className="flex items-center gap-4">
-                    {/* Rank Badge */}
-                    <div className="relative flex-shrink-0">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg shadow-lg ${
-                        index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white' :
-                        index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-white' :
-                        'bg-gradient-to-br from-orange-400 to-orange-600 text-white'
-                      }`}>
-                        #{index + 1}
-                      </div>
-                      {product.imageUrl && (
-                        <img 
-                          src={product.imageUrl} 
-                          className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg border-2 border-white object-cover shadow-md"
-                          alt=""
+            <div className="p-6">
+              <div className="space-y-3">
+                {stats.lowStockProducts.slice(0, 3).map(product => (
+                  <div key={product.id} className="flex items-center justify-between p-4 bg-white rounded-xl border-2 border-orange-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-4">
+                      {product.image ? (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-14 h-14 rounded-lg object-cover"
                         />
+                      ) : (
+                        <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center">
+                          <Package className="w-6 h-6 text-gray-400" />
+                        </div>
                       )}
-                    </div>
-                    
-                    {/* Product Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 truncate group-hover:text-yellow-600 transition-colors">
-                        {product.name}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500 font-medium">
-                          💰 {product.revenue.toLocaleString('vi-VN')}đ
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Sales Count */}
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-2xl font-black bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
-                        {product.soldCount}
-                      </div>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Đã bán</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {stats.topProducts.length === 0 && (
-                <div className="p-8 text-center">
-                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">Chưa có dữ liệu</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top Brands */}
-        <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg shadow-lg">
-                <BarChart3 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-bold">Top Thương Hiệu</CardTitle>
-                <p className="text-sm text-gray-500 mt-0.5">Được yêu thích</p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {stats.topBrands.map((brand, index) => (
-                <div key={brand.id} className="p-4 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-300 group cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg shadow-md ${
-                        index === 0 ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white' :
-                        index === 1 ? 'bg-gradient-to-br from-purple-400 to-pink-400 text-white' :
-                        'bg-gradient-to-br from-purple-300 to-pink-300 text-white'
-                      }`}>
-                        {index + 1}
-                      </div>
                       <div>
-                        <p className="font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
-                          {brand.name}
+                        <p className="font-semibold text-slate-900">{product.name}</p>
+                        <p className="text-sm text-slate-600">
+                          Còn lại: <span className="text-orange-600 font-bold">{product.stock} sản phẩm</span>
                         </p>
-                        <p className="text-xs text-gray-500">Thương hiệu</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                        {brand.soldCount}
-                      </div>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Sản phẩm</p>
-                    </div>
+                    <Link to="/admin/inventory">
+                      <Button size="sm" variant="outline" className="rounded-lg border-2 hover:bg-orange-50">
+                        <Eye className="w-4 h-4 mr-2" />
+                        Xem
+                      </Button>
+                    </Link>
                   </div>
-                </div>
-              ))}
-              {stats.topBrands.length === 0 && (
-                <div className="p-8 text-center">
-                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">Chưa có dữ liệu</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top Categories */}
-        <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-blue-50">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-lg shadow-lg">
-                <Package className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-bold">Top Danh Mục</CardTitle>
-                <p className="text-sm text-gray-500 mt-0.5">Phổ biến nhất</p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {stats.topCategories.map((category, index) => (
-                <div key={category.id} className="p-4 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-300 group cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg shadow-md ${
-                        index === 0 ? 'bg-gradient-to-br from-indigo-500 to-blue-500 text-white' :
-                        index === 1 ? 'bg-gradient-to-br from-indigo-400 to-blue-400 text-white' :
-                        'bg-gradient-to-br from-indigo-300 to-blue-300 text-white'
-                      }`}>
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                          {category.name}
-                        </p>
-                        <p className="text-xs text-gray-500">Danh mục</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xl font-black bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-                        {category.soldCount}
-                      </div>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Sản phẩm</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {stats.topCategories.length === 0 && (
-                <div className="p-8 text-center">
-                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">Chưa có dữ liệu</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Low Stock Alert - Enhanced */}
-      <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 mb-8">
-        <CardHeader className="border-b bg-gradient-to-r from-red-50 to-orange-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg shadow-lg animate-pulse">
-                <AlertTriangle className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-bold">Cảnh Báo Tồn Kho</CardTitle>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {stats.lowStockProducts.length} sản phẩm sắp hết hàng
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-100 rounded-full">
-              <Clock className="w-4 h-4 text-red-600" />
-              <span className="text-sm font-bold text-red-700">Khẩn cấp</span>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {stats.lowStockProducts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 p-6">
-              {stats.lowStockProducts.map((product) => (
-                <div 
-                  key={product.id} 
-                  className="relative p-4 rounded-xl bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-200 hover:border-red-400 transition-all duration-300 group cursor-pointer hover:shadow-lg"
-                >
-                  {/* Stock Badge */}
-                  <div className="absolute -top-2 -right-2 z-10">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-lg shadow-lg ${
-                      product.stock <= 3 ? 'bg-gradient-to-br from-red-500 to-red-600 animate-pulse' :
-                      product.stock <= 5 ? 'bg-gradient-to-br from-orange-500 to-orange-600' :
-                      'bg-gradient-to-br from-yellow-500 to-yellow-600'
-                    } text-white`}>
-                      {product.stock}
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <p className="font-bold text-gray-900 line-clamp-2 group-hover:text-red-600 transition-colors pr-8">
-                      {product.name}
-                    </p>
-                    <p className="text-xs text-gray-500 font-mono">
-                      ID: {product.id.substring(0, 12)}...
-                    </p>
-                    <div className="flex items-center gap-2 pt-2">
-                      <div className="flex-1 h-2 bg-red-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full transition-all duration-500"
-                          style={{ width: `${(product.stock / 10) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-bold text-red-600">
-                        {((product.stock / 10) * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-12 text-center">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 className="w-10 h-10 text-green-600" />
-              </div>
-              <p className="text-lg font-bold text-green-600 mb-1">Tất Cả Sản Phẩm Đủ Hàng!</p>
-              <p className="text-sm text-gray-500">Không có sản phẩm nào cần nhập thêm</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent Orders - Enhanced */}
-      <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300">
-        <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg shadow-lg">
-                <ShoppingCart className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-bold">Đơn Hàng Gần Đây</CardTitle>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {stats.recentOrders.length} đơn hàng mới nhất
-                </p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Eye className="w-4 h-4" />
-              Xem tất cả
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50/80 border-b">
-                  <th className="text-left p-4 font-bold text-gray-700 text-sm uppercase tracking-wider">Đơn Hàng</th>
-                  <th className="text-left p-4 font-bold text-gray-700 text-sm uppercase tracking-wider">Khách Hàng</th>
-                  <th className="text-left p-4 font-bold text-gray-700 text-sm uppercase tracking-wider">Tổng Tiền</th>
-                  <th className="text-left p-4 font-bold text-gray-700 text-sm uppercase tracking-wider">Trạng Thái</th>
-                  <th className="text-left p-4 font-bold text-gray-700 text-sm uppercase tracking-wider">Ngày Đặt</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {stats.recentOrders.map((order, index) => (
-                  <tr 
-                    key={order.id} 
-                    className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group cursor-pointer"
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden flex-shrink-0 border-2 border-gray-200 group-hover:border-blue-400 transition-all duration-300 shadow-sm">
-                            <img 
-                              src={order.thumbnail || 'https://via.placeholder.com/48'} 
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
-                              alt="" 
-                            />
-                          </div>
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white">
-                            <ShoppingCart className="w-3 h-3 text-white" />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-mono text-xs font-bold text-gray-400 mb-0.5">
-                            #{order.id.substring(0, 8)}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {order.items?.length || 0} sản phẩm
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                          {order.userName?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                        <div>
-                          <div className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                            {order.userName || 'Khách hàng'}
-                          </div>
-                          <div className="text-xs text-gray-400 font-mono truncate max-w-[120px]">
-                            {order.userId.substring(0, 8)}...
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="font-black text-lg bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                        {order.totalAmount?.toLocaleString('vi-VN')}đ
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {((order.totalAmount || 0) / 1000).toFixed(0)}K VNĐ
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="inline-flex items-center gap-2">
-                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider shadow-sm ${
-                          order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                          order.status === 'PROCESSING' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
-                          order.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                          order.status === 'SHIPPED' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' :
-                          order.status === 'DELIVERED' ? 'bg-green-100 text-green-700 border border-green-200' :
-                          order.status === 'CANCELLED' ? 'bg-red-100 text-red-700 border border-red-200' :
-                          'bg-gray-100 text-gray-700 border border-gray-200'
-                        }`}>
-                          {order.status === 'PENDING' && <Clock className="w-3 h-3" />}
-                          {order.status === 'DELIVERED' && <CheckCircle2 className="w-3 h-3" />}
-                          {order.status === 'CANCELLED' && <XCircle className="w-3 h-3" />}
-                          {order.status}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="text-sm font-bold text-gray-700">
-                        {new Date(order.createdAt).toLocaleDateString('vi-VN', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {new Date(order.createdAt).toLocaleTimeString('vi-VN', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                    </td>
-                  </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          {stats.recentOrders.length === 0 && (
-            <div className="p-12 text-center">
-              <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 font-medium">Chưa có đơn hàng nào</p>
+              </div>
+              <Link to="/admin/inventory">
+                <Button className="w-full mt-4 bg-orange-600 hover:bg-orange-700 rounded-xl text-white h-12 font-bold shadow-lg">
+                  Xem tất cả sản phẩm tồn kho thấp
+                </Button>
+              </Link>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </AdminPageWrapper>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+          {/* Revenue Chart */}
+          <div className="bg-white rounded-3xl border-2 border-slate-200 overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+            <div className="p-6 border-b-2 border-slate-200 bg-slate-50">
+              <h3 className="text-xl font-bold text-slate-900">Doanh thu 7 ngày qua</h3>
+              <p className="text-sm text-slate-600 mt-1">
+                Tổng doanh thu: <span className="font-semibold text-indigo-600">{(stats.totalRevenue / 1000000).toFixed(1)}M VNĐ</span>
+              </p>
+            </div>
+            <div className="p-6 bg-white">
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={stats.revenueByDate}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.05}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '12px' }} />
+                  <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} stroke="#64748b" style={{ fontSize: '12px' }} />
+                  <Tooltip
+                    formatter={(value: any) => [`${(value / 1000000).toFixed(1)}M VNĐ`, 'Doanh thu']}
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#6366f1"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Top Products */}
+          <div className="bg-white rounded-3xl border-2 border-slate-200 overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+            <div className="p-6 border-b-2 border-slate-200 bg-slate-50">
+              <h3 className="text-xl font-bold text-slate-900">Sản phẩm bán chạy</h3>
+              <p className="text-sm text-slate-600 mt-1">Top 5 sản phẩm bán chạy nhất</p>
+            </div>
+            <div className="p-6 bg-white">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={stats.topProducts} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis type="number" tickFormatter={(value) => `${value}`} stroke="#64748b" style={{ fontSize: '12px' }} />
+                  <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 12 }} stroke="#64748b" />
+                  <Tooltip
+                    formatter={(value: any, name: string) => {
+                      if (name === 'sold') return [value, 'Đã bán'];
+                      return [`${(value / 1000000).toFixed(1)}M`, 'Doanh thu'];
+                    }}
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="sold" fill="#6366f1" name="Đã bán" radius={[0, 8, 8, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white rounded-3xl border-2 border-slate-200 overflow-hidden shadow-lg">
+          <div className="p-6 border-b-2 border-slate-200 bg-slate-50">
+            <h3 className="text-xl font-bold text-slate-900">Quản lý nhanh</h3>
+            <p className="text-sm text-slate-600 mt-1">Truy cập nhanh các chức năng quản trị</p>
+          </div>
+          <div className="p-6 bg-white">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              {[
+                { to: "/admin/products", icon: Package, label: "Sản phẩm", color: "bg-blue-100 text-blue-600 group-hover:bg-blue-200" },
+                { to: "/admin/inventory", icon: Package, label: "Tồn kho", color: "bg-purple-100 text-purple-600 group-hover:bg-purple-200" },
+                { to: "/admin/orders", icon: ShoppingCart, label: "Đơn hàng", color: "bg-indigo-100 text-indigo-600 group-hover:bg-indigo-200" },
+                { to: "/admin/customers", icon: Users, label: "Tài khoản", color: "bg-orange-100 text-orange-600 group-hover:bg-orange-200" },
+                { to: "/admin/categories", icon: Tag, label: "Danh mục", color: "bg-pink-100 text-pink-600 group-hover:bg-pink-200" },
+                { to: "/admin/brands", icon: Award, label: "Thương hiệu", color: "bg-amber-100 text-amber-600 group-hover:bg-amber-200" },
+              ].map(item => (
+                <Link key={item.to} to={item.to}>
+                  <div className="group border-2 border-slate-200 rounded-2xl h-28 flex flex-col items-center justify-center gap-3 hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-lg transition-all cursor-pointer">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all shadow-md ${item.color}`}>
+                      <item.icon className="w-6 h-6" />
+                    </div>
+                    <span className="font-semibold text-slate-700 text-sm group-hover:text-slate-900 text-center">{item.label}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
-};
+}
+

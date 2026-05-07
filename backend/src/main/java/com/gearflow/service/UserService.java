@@ -31,6 +31,17 @@ public class UserService {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        if (userDTO.getEmail() != null && !userDTO.getEmail().isEmpty()) {
+            // Check if email is already taken by another user
+            if (userRepository.existsByEmail(userDTO.getEmail())) {
+                User existingUser = userRepository.findByEmail(userDTO.getEmail()).orElse(null);
+                if (existingUser != null && !existingUser.getId().equals(id)) {
+                    throw new com.gearflow.exception.BusinessException("Email already in use", 
+                        org.springframework.http.HttpStatus.CONFLICT);
+                }
+            }
+            user.setEmail(userDTO.getEmail());
+        }
         if (userDTO.getPhone() != null && !userDTO.getPhone().isEmpty()) {
             user.setPhone(userDTO.getPhone());
         }
@@ -146,6 +157,7 @@ public class UserService {
         return UserDTO.builder()
             .id(user.getId())
             .username(user.getUsername())
+            .email(user.getEmail())
             .phone(user.getPhone())
             .address(user.getAddress())
             .imageUrl(user.getImageUrl())

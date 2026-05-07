@@ -34,9 +34,14 @@ public class AuthService {
             throw new BusinessException("Username already registered", HttpStatus.CONFLICT, "Conflict");
         }
 
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException("Email already registered", HttpStatus.CONFLICT, "Conflict");
+        }
+
         User user = User.builder()
                 .id(java.util.UUID.randomUUID().toString())
                 .username(request.getUsername())
+                .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(request.getPhone() != null ? request.getPhone() : "")
                 .address(request.getAddress() != null ? request.getAddress() : "")
@@ -60,15 +65,20 @@ public class AuthService {
     }
 
     public AuthResponse login(AuthRequest request) {
+        // Authenticate with username or email
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
-        User user = userRepository.findByUsername(request.getUsername()).orElseThrow();
+        // Find user by username or email
+        User user = userRepository.findByUsername(request.getUsername())
+                .or(() -> userRepository.findByEmail(request.getUsername()))
+                .orElseThrow(() -> new BusinessException("User not found", HttpStatus.NOT_FOUND));
+        
         String accessToken = jwtTokenProvider.generateAccessToken(authentication);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
-        log.info("User logged in successfully: {}", request.getUsername());
+        log.info("User logged in successfully: {} (login with: {})", user.getUsername(), request.getUsername());
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
@@ -104,6 +114,7 @@ public class AuthService {
         return UserDTO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
+                .email(user.getEmail())
                 .phone(user.getPhone())
                 .address(user.getAddress())
                 .role(user.getRole().toString())

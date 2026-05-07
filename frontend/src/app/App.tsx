@@ -2,15 +2,15 @@ import { RouterProvider } from "react-router";
 import { router } from "./routes";
 import { Toaster } from "./components/ui/sonner";
 import { AuthProvider } from "./context/AuthContext";
-import { CartProvider } from "./context/CartContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export default function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
+    <ErrorBoundary>
+      <AuthProvider>
         <RouterProvider router={router} />
-        <Toaster />
-      </CartProvider>
-    </AuthProvider>
+        <Toaster richColors position="top-right" />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
-import { Pagination } from '../ui/pagination';
+import { CustomPagination } from '../ui/custom-pagination';
 import { AdminPageWrapper } from './PageWrapper';
 import {
   Star,
@@ -358,7 +358,7 @@ export function Reviews() {
           {/* Pagination */}
           {filteredReviews.length > 0 && (
             <div className="mt-6">
-              <Pagination
+              <CustomPagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 totalItems={filteredReviews.length}

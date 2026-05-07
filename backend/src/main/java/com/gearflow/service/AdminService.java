@@ -30,8 +30,14 @@ public class AdminService {
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
     private final OrderService orderService;
+    private final PaymentService paymentService;
 
     // Analytics Methods
+    @Transactional(readOnly = true)
+    public List<com.gearflow.dto.PaymentDTO> getAllPayments() {
+        log.info("Admin fetching all payments");
+        return paymentService.getAllPayments();
+    }
     @Transactional(readOnly = true)
     @Cacheable(value = "product_analytics")
     public Map<String, Object> getProductAnalytics() {
@@ -177,20 +183,76 @@ public class AdminService {
         
         List<Order> deliveredOrders = orderRepository.findByStatus(Order.OrderStatus.DELIVERED);
         
-        return deliveredOrders.stream()
-                .flatMap(order -> order.getItems() != null ? order.getItems().stream() : java.util.stream.Stream.empty())
-                .collect(Collectors.groupingBy(
-                        item -> item.getProductId(),
-                        Collectors.summingInt(item -> item.getQuantity())
-                ))
-                .entrySet().stream()
-                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+        // Group by productId, sum quantity and revenue
+        Map<String, long[]> productStats = new HashMap<>(); // [quantity, revenue*100]
+        for (Order order : deliveredOrders) {
+            if (order.getItems() == null) continue;
+            for (var item : order.getItems()) {
+                String pid = item.getProductId();
+                long qty = item.getQuantity();
+                long rev = item.getPrice() != null ? item.getPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())).longValue() : 0;
+                productStats.merge(pid, new long[]{qty, rev}, (a, b) -> new long[]{a[0]+b[0], a[1]+b[1]});
+            }
+        }
+        
+        return productStats.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue()[0], a.getValue()[0]))
                 .limit(limit)
                 .map(entry -> {
-                    Map<String, Object> productInfo = new HashMap<>();
-                    productInfo.put("productId", entry.getKey());
-                    productInfo.put("quantitySold", entry.getValue());
-                    return productInfo;
+                    Map<String, Object> info = new HashMap<>();
+                    info.put("productId", entry.getKey());
+                    info.put("totalSold", entry.getValue()[0]);
+                    info.put("totalRevenue", entry.getValue()[1]);
+                    // Enrich with product name
+                    productRepository.findById(entry.getKey()).ifPresent(p -> {
+                        info.put("productName", p.getName());
+                        info.put("imageUrl", p.getImageUrl());
+                        info.put("brandId", p.getBrandId());
+                    });
+                    return info;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getTopBrands(int limit) {
+        log.info("Fetching top {} brands", limit);
+        
+        List<Order> deliveredOrders = orderRepository.findByStatus(Order.OrderStatus.DELIVERED);
+        
+        // Group by brandId via product lookup
+        Map<String, long[]> brandStats = new HashMap<>();
+        for (Order order : deliveredOrders) {
+            if (order.getItems() == null) continue;
+            for (var item : order.getItems()) {
+                productRepository.findById(item.getProductId()).ifPresent(product -> {
+                    String brandId = product.getBrandId();
+                    if (brandId == null) return;
+                    long qty = item.getQuantity();
+                    long rev = item.getPrice() != null ? item.getPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())).longValue() : 0;
+                    brandStats.merge(brandId, new long[]{qty, rev}, (a, b) -> new long[]{a[0]+b[0], a[1]+b[1]});
+                });
+            }
+        }
+        
+        return brandStats.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue()[0], a.getValue()[0]))
+                .limit(limit)
+                .map(entry -> {
+                    Map<String, Object> info = new HashMap<>();
+                    info.put("brandId", entry.getKey());
+                    info.put("totalSold", entry.getValue()[0]);
+                    info.put("totalRevenue", entry.getValue()[1]);
+                    // Enrich with brand name
+                    try {
+                        var brands = productRepository.findAll().stream()
+                            .filter(p -> entry.getKey().equals(p.getBrandId()))
+                            .findFirst();
+                        // Use brandId as name fallback
+                        info.put("brandName", entry.getKey());
+                    } catch (Exception e) {
+                        info.put("brandName", entry.getKey());
+                    }
+                    return info;
                 })
                 .collect(Collectors.toList());
     }

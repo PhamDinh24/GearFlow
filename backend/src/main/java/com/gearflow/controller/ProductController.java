@@ -133,7 +133,10 @@ public class ProductController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<com.gearflow.dto.StockDTO> updateStock(
             @PathVariable String variantId,
-            @RequestParam Integer quantity) {
+            @RequestBody java.util.Map<String, Integer> body) {
+        Integer quantity = body.get("stock");
+        if (quantity == null) quantity = body.get("quantity");
+        if (quantity == null) return ResponseEntity.badRequest().build();
         return ResponseEntity.ok(productService.updateStock(variantId, quantity));
     }
 
