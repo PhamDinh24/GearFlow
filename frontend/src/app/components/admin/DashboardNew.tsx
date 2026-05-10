@@ -184,10 +184,19 @@ function DashboardNew() {
       }));
 
       // Payment methods
+      let vnpayCount = 0;
+      let codCount = 0;
+      orders.forEach(order => {
+        if (order.paymentMethod === 'VNPAY') {
+           vnpayCount++;
+        } else {
+           codCount++;
+        }
+      });
+
       const paymentMethods = [
-        { name: 'VNPAY', value: Math.floor(orders.length * 0.6), color: COLORS.primary },
-        { name: 'COD', value: Math.floor(orders.length * 0.3), color: COLORS.warning },
-        { name: 'Chuyển khoản', value: Math.floor(orders.length * 0.1), color: COLORS.info },
+        { name: 'VNPAY', value: vnpayCount, color: COLORS.primary },
+        { name: 'COD', value: codCount, color: COLORS.warning },
       ];
 
       // Calculate growth
@@ -241,6 +250,10 @@ function DashboardNew() {
           acc[item.name] = item.value;
           return acc;
         }, {} as Record<string, number>),
+        paymentMethods: stats.paymentMethods.reduce((acc, item) => {
+          acc[item.name] = item.value;
+          return acc;
+        }, {} as Record<string, number>),
         charts: {
           revenueChart: generateBarChartImage(
             "Biểu đồ doanh thu",
@@ -253,6 +266,12 @@ function DashboardNew() {
             stats.ordersByStatus.map(s => s.name),
             stats.ordersByStatus.map(s => s.value),
             stats.ordersByStatus.map(s => s.color)
+          ),
+          paymentChart: generateBarChartImage(
+            "Phương thức thanh toán",
+            stats.paymentMethods.map(p => p.name),
+            stats.paymentMethods.map(p => p.value),
+            stats.paymentMethods.map(p => p.color)
           )
         }
       };
@@ -514,7 +533,7 @@ function DashboardNew() {
             </CardHeader>
             <CardContent className="p-6">
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.paymentMethods} layout="horizontal">
+                <BarChart data={stats.paymentMethods} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis type="number" stroke="#64748b" style={{ fontSize: '12px' }} />
                   <YAxis dataKey="name" type="category" stroke="#64748b" style={{ fontSize: '12px' }} />

@@ -232,7 +232,7 @@ export function Orders() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            COD
+                            {order.paymentMethod || 'COD'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-semibold">

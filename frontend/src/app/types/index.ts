@@ -126,6 +126,7 @@ export interface OrderDTO {
   userId: string;
   totalAmount: number;
   status: string;
+  paymentMethod?: string;
   shippingAddress?: string;
   shippingCity?: string;
   shippingPostalCode?: string;

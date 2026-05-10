@@ -14,6 +14,7 @@ import com.gearflow.repository.ProductRepository;
 import com.gearflow.repository.ProductVariantRepository;
 import com.gearflow.repository.UserRepository;
 import com.gearflow.repository.ShippingAddressRepository;
+import com.gearflow.repository.PaymentRepository;
 import com.gearflow.entity.ShippingAddress;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ public class OrderService {
     private final CartService cartService;
     private final ProductService productService;
     private final ShippingAddressRepository addressRepository;
+    private final PaymentRepository paymentRepository;
 
     @Transactional
     public OrderDTO createOrder(String userId, OrderRequest request) {
@@ -277,6 +279,7 @@ public class OrderService {
                 .id(order.getId())
                 .userId(order.getUserId())
                 .status(order.getStatus().toString())
+                .paymentMethod(paymentRepository.findByOrderId(order.getId()).map(p -> p.getPaymentMethod().name()).orElse("COD"))
                 .totalAmount(order.getTotalAmount())
                 .shippingFullName(order.getShippingFullName())
                 .shippingEmail(order.getShippingEmail())
@@ -293,6 +296,7 @@ public class OrderService {
                                 .productId(item.getProductId())
                                 .variantId(item.getVariantId())
                                 .productName(productRepository.findById(item.getProductId()).map(com.gearflow.entity.Product::getName).orElse(null))
+                                .imageUrl(productRepository.findById(item.getProductId()).map(com.gearflow.entity.Product::getImageUrl).orElse(null))
                                 .quantity(item.getQuantity())
                                 .price(item.getPrice())
                                 .subtotal(item.getPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())))

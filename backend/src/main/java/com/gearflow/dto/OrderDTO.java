@@ -18,6 +18,7 @@ public class OrderDTO {
     private String userId;
     private BigDecimal totalAmount;
     private String status;
+    private String paymentMethod;
     private String shippingFullName;
     private String shippingEmail;
     private String shippingPhone;

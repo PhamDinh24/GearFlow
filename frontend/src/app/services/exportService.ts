@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import { Document, Packer, Paragraph, TextRun, Table, TableCell, TableRow, WidthType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, Table, TableCell, TableRow, WidthType, ImageRun } from 'docx';
 
 export interface ReportData {
   title: string;
@@ -14,9 +14,11 @@ export interface ReportData {
   revenueByDate: Array<{ date: string; revenue: number }>;
   topProducts: Array<{ name: string; sold: number; revenue: number }>;
   ordersByStatus: Record<string, number>;
+  paymentMethods?: Record<string, number>;
   charts?: {
     revenueChart?: string;
     statusChart?: string;
+    paymentChart?: string;
   };
 }
 
@@ -70,67 +72,200 @@ export const exportService = {
     XLSX.writeFile(wb, filename);
   },
 
-  // Export to PDF
+  // Export to PDF via HTML Print (Supports Vietnamese perfectly and looks much better)
   exportToPDF(data: ReportData) {
-    const doc = new jsPDF();
-    
-    // Title
-    doc.setFontSize(20);
-    doc.text(removeAccents(data.title.toUpperCase()), 105, 20, { align: 'center' });
-    
-    doc.setFontSize(12);
-    doc.text(removeAccents(`Ky bao cao: ${data.period}`), 105, 30, { align: 'center' });
-    
-    // Stats
-    doc.setFontSize(14);
-    doc.text('TONG QUAN', 20, 45);
-    
-    doc.setFontSize(11);
-    let y = 55;
-    doc.text(removeAccents(`Tong doanh thu: ${(data.stats.totalRevenue / 1000000).toFixed(2)}M VND`), 20, y);
-    y += 8;
-    doc.text(removeAccents(`Tong don hang: ${data.stats.totalOrders}`), 20, y);
-    y += 8;
-    doc.text(removeAccents(`Tong san pham: ${data.stats.totalProducts}`), 20, y);
-    y += 8;
-    doc.text(removeAccents(`Tong khach hang: ${data.stats.totalCustomers}`), 20, y);
-    
-    // Charts
-    if (data.charts?.revenueChart) {
-      y += 10;
-      doc.addImage(data.charts.revenueChart, 'PNG', 20, y, 170, 80);
-      y += 90;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Vui lòng cho phép popup để xuất PDF');
+      return;
     }
 
-    if (data.charts?.statusChart) {
-      if (y > 200) { doc.addPage(); y = 20; }
-      doc.addImage(data.charts.statusChart, 'PNG', 20, y, 170, 80);
-      y += 90;
-    }
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="vi">
+      <head>
+        <meta charset="UTF-8">
+        <title>\${data.title}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+          body { font-family: 'Inter', sans-serif; color: #1e293b; line-height: 1.6; padding: 40px; margin: 0; background: #fff; }
+          .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
+          .logo { font-size: 28px; font-weight: 800; color: #4f46e5; letter-spacing: 2px; margin-bottom: 5px; }
+          .title { font-size: 24px; font-weight: 800; color: #0f172a; text-transform: uppercase; margin: 0; }
+          .period { font-size: 14px; color: #64748b; margin-top: 5px; }
+          
+          .section-title { font-size: 16px; font-weight: 800; color: #334155; margin-top: 35px; margin-bottom: 15px; text-transform: uppercase; border-left: 4px solid #4f46e5; padding-left: 12px; }
+          
+          .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+          .stat-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; }
+          .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; }
+          .stat-value { font-size: 24px; font-weight: 800; color: #0f172a; }
+          .stat-value.primary { color: #4f46e5; }
+          
+          .charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; page-break-inside: avoid; }
+          .chart-box { text-align: center; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; background: #fff; }
+          .chart-title { font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 15px; text-transform: uppercase; }
+          .chart-img { max-width: 100%; height: auto; border-radius: 8px; }
+          
+          .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+          
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+          th { background: #f1f5f9; color: #334155; font-weight: 600; text-transform: uppercase; font-size: 11px; padding: 12px; text-align: left; border-bottom: 2px solid #cbd5e1; }
+          td { padding: 12px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+          tr:nth-child(even) { background-color: #f8fafc; }
+          
+          .footer { margin-top: 50px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+          .signatures { display: flex; justify-content: space-around; margin-top: 50px; page-break-inside: avoid; }
+          .signature-box { text-align: center; }
+          .signature-title { font-weight: 600; color: #334155; font-size: 14px; }
+          .signature-sub { font-size: 11px; color: #64748b; font-style: italic; margin-top: 4px; }
+          
+          @media print {
+            body { padding: 0; }
+            .chart-box { box-shadow: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">GEARFLOW</div>
+          <h1 class="title">${data.title}</h1>
+          <div class="period">Kỳ báo cáo: ${data.period}</div>
+        </div>
 
-    // Top Products
-    if (y > 230) { doc.addPage(); y = 20; }
-    doc.setFontSize(14);
-    doc.text('SAN PHAM BAN CHAY', 20, y);
-    
-    y += 10;
-    doc.setFontSize(10);
-    data.topProducts.slice(0, 5).forEach((product, index) => {
-      doc.text(
-        removeAccents(`${index + 1}. ${product.name}: ${product.sold} san pham - ${(product.revenue / 1000000).toFixed(2)}M VND`),
-        20,
-        y
-      );
-      y += 7;
-    });
-    
-    // Footer
-    doc.setFontSize(8);
-    doc.text(removeAccents(`Xuat bao cao: ${new Date().toLocaleString('vi-VN')}`), 105, 280, { align: 'center' });
-    
-    // Generate filename
-    const filename = `BaoCao_${data.period.replace(/\s/g, '_')}_${new Date().getTime()}.pdf`;
-    doc.save(filename);
+        <div class="section-title">Tổng quan kinh doanh</div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">Tổng doanh thu</div>
+            <div class="stat-value primary">${(data.stats.totalRevenue / 1000000).toFixed(2)}M đ</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Tổng đơn hàng</div>
+            <div class="stat-value">${data.stats.totalOrders}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Sản phẩm đã bán</div>
+            <div class="stat-value">${data.stats.totalProducts}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Khách hàng mới</div>
+            <div class="stat-value">${data.stats.totalCustomers}</div>
+          </div>
+        </div>
+
+        ${data.charts?.revenueChart || data.charts?.statusChart ? `
+        <div class="section-title">Phân tích biểu đồ</div>
+        <div class="charts-container">
+          ${data.charts.revenueChart ? `
+          <div class="chart-box" style="grid-column: 1 / -1;">
+            <div class="chart-title">Biểu đồ Tăng trưởng Doanh thu</div>
+            <img class="chart-img" style="max-height: 250px;" src="${data.charts.revenueChart}" alt="Revenue" />
+          </div>` : ''}
+          ${data.charts.statusChart ? `
+          <div class="chart-box">
+            <div class="chart-title">Tỷ lệ Trạng thái Đơn hàng</div>
+            <img class="chart-img" style="max-height: 220px;" src="${data.charts.statusChart}" alt="Status" />
+          </div>` : ''}
+          ${data.charts.paymentChart ? `
+          <div class="chart-box">
+            <div class="chart-title">Cơ cấu Phương thức Thanh toán</div>
+            <img class="chart-img" style="max-height: 220px;" src="${data.charts.paymentChart}" alt="Payment" />
+          </div>` : ''}
+        </div>
+        ` : ''}
+
+        <div class="data-grid" style="page-break-before: auto;">
+          <div>
+            <div class="section-title" style="margin-top: 0;">Trạng thái đơn hàng</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Trạng thái</th>
+                  <th style="text-align: right;">Số lượng</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${Object.entries(data.ordersByStatus || {}).map(([status, count]) => `
+                <tr>
+                  <td style="font-weight: 600;">${status}</td>
+                  <td style="text-align: right;">${count}</td>
+                </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-title" style="margin-top: 0;">Phương thức thanh toán</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Phương thức</th>
+                  <th style="text-align: right;">Số lượng</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${Object.entries(data.paymentMethods || {}).map(([method, count]) => `
+                <tr>
+                  <td style="font-weight: 600;">${method}</td>
+                  <td style="text-align: right;">${count}</td>
+                </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-title">Top 10 Sản phẩm bán chạy nhất</div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 50px; text-align: center;">STT</th>
+              <th>Tên sản phẩm</th>
+              <th style="text-align: center;">Đã bán</th>
+              <th style="text-align: right;">Doanh thu mang lại</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.topProducts.slice(0, 10).map((p, i) => `
+            <tr>
+              <td style="text-align: center; color: #64748b;">${i + 1}</td>
+              <td style="font-weight: 600;">${p.name}</td>
+              <td style="text-align: center;">${p.sold}</td>
+              <td style="text-align: right; color: #4f46e5; font-weight: 600;">${p.revenue.toLocaleString('vi-VN')} đ</td>
+            </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div class="signatures">
+          <div class="signature-box">
+            <div class="signature-title">Người lập biểu</div>
+            <div class="signature-sub">(Ký và ghi rõ họ tên)</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-title">Giám đốc phê duyệt</div>
+            <div class="signature-sub">(Ký, ghi rõ họ tên và đóng dấu)</div>
+          </div>
+        </div>
+
+        <div class="footer">
+          Báo cáo được xuất tự động từ Hệ thống Quản trị GearFlow vào lúc ${new Date().toLocaleString('vi-VN')}
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(() => {
+              window.print();
+            }, 800);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   },
 
   // Export to Word
