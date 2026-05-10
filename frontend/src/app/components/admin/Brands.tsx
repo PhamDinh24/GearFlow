@@ -10,6 +10,8 @@ import { Plus, Edit, Trash2, Search, ToggleLeft, ToggleRight, Package } from "lu
 import { toast } from "sonner";
 import { brandApi } from "../../services/api";
 import { BrandDTO } from "../../app/types";
+import { usePagination } from "../../hooks/usePagination";
+import { DataPagination } from "../ui/data-pagination";
 
 export function Brands() {
   const [brands, setBrands] = useState<BrandDTO[]>([]);
@@ -35,6 +37,22 @@ export function Brands() {
   const filtered = brands.filter(b =>
     b.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Pagination
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: paginatedBrands,
+    goToPage,
+    canGoNext,
+    canGoPrevious,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination({
+    items: filtered,
+    itemsPerPage: 12,
+  });
 
   const handleToggle = (id: string) => {
     toast.success("Tính năng tạm khóa chưa hỗ trợ từ API");
@@ -131,9 +149,8 @@ export function Brands() {
           </div>
         </div>
 
-        {/* Brands Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(brand => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {paginatedBrands.map(brand => (
             <div key={brand.id} className={`bg-white rounded-2xl border-2 p-5 hover:shadow-md transition-shadow border-slate-200`}>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -169,6 +186,19 @@ export function Brands() {
               </div>
             </div>
           ))}
+          {/* Pagination */}
+          <div className="mt-8 bg-white rounded-2xl border border-slate-200">
+            <DataPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+              canGoNext={canGoNext}
+              canGoPrevious={canGoPrevious}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              totalItems={totalItems}
+            />
+          </div>
         </div>
       </div>
 

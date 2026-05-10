@@ -42,6 +42,9 @@ public class Payment {
     @Column(name = "transaction_id", unique = true, length = 255)
     private String transactionId;
 
+    @Column(name = "vnpay_ref", unique = true, length = 64)
+    private String vnpayRef;
+
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 

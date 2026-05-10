@@ -18,6 +18,8 @@ import {
 import { toast } from "sonner";
 import { userApi } from "../../services/api";
 import { UserDTO } from "../../app/types";
+import { usePagination } from "../../hooks/usePagination";
+import { DataPagination } from "../ui/data-pagination";
 
 export function Customers() {
   const [customers, setCustomers] = useState<UserDTO[]>([]);
@@ -48,6 +50,22 @@ export function Customers() {
     return matchSearch && matchRole && matchStatus;
   });
 
+  // Pagination
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: paginatedCustomers,
+    goToPage,
+    canGoNext,
+    canGoPrevious,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination({
+    items: filtered,
+    itemsPerPage: 12,
+  });
+
   const handleToggleBlock = (id: string) => {
     // Optional: implement block API call
     toast.success("Đã khóa/mở khóa tài khoản");
@@ -69,7 +87,7 @@ export function Customers() {
     }
   };
 
-  const totalCustomers = customers.filter(c => c.role === 'USER').length;
+  const totalAccounts = customers.length;
   const totalRevenue = 0; // Mocked
   const blockedCount = 0; // Mocked
   const avgSpend = 0; // Mocked
@@ -86,7 +104,7 @@ export function Customers() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
-            { label: "Tổng khách hàng", value: totalCustomers, icon: Users, color: "bg-blue-100 text-blue-600" },
+            { label: "Tổng tài khoản", value: totalAccounts, icon: Users, color: "bg-blue-100 text-blue-600" },
             { label: "Doanh thu KH", value: `${(totalRevenue / 1000000).toFixed(1)}M đ`, icon: TrendingUp, color: "bg-emerald-100 text-emerald-600" },
             { label: "Chi tiêu TB", value: `${(avgSpend / 1000).toFixed(0)}K đ`, icon: ShoppingCart, color: "bg-purple-100 text-purple-600" },
             { label: "Tài khoản khóa", value: blockedCount, icon: Lock, color: "bg-red-100 text-red-600" },
@@ -158,7 +176,7 @@ export function Customers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(customer => (
+                {paginatedCustomers.map(customer => (
                   <TableRow key={customer.id} className="hover:bg-slate-50">
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -237,6 +255,17 @@ export function Customers() {
               </TableBody>
             </Table>
           </div>
+          {/* Pagination */}
+          <DataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={goToPage}
+            canGoNext={canGoNext}
+            canGoPrevious={canGoPrevious}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            totalItems={totalItems}
+          />
         </div>
       </div>
 

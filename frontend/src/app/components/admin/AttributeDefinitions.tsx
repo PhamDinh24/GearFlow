@@ -10,6 +10,8 @@ import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { toast } from "sonner";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
+import { usePagination } from "../../hooks/usePagination";
+import { DataPagination } from "../ui/data-pagination";
 
 export function AttributeDefinitions() {
   const [attributes, setAttributes] = useState<AttributeDefinitionDTO[]>([]);
@@ -83,6 +85,22 @@ export function AttributeDefinitions() {
     (typeFilter === "ALL" || a.type === typeFilter)
   );
 
+  // Pagination
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: paginatedAttributes,
+    goToPage,
+    canGoNext,
+    canGoPrevious,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination({
+    items: filtered,
+    itemsPerPage: 12,
+  });
+
   if (loading) return <div className="p-8 text-center text-gray-500">Đang tải cấu hình thuộc tính...</div>;
 
   return (
@@ -124,8 +142,8 @@ export function AttributeDefinitions() {
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map(attr => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {paginatedAttributes.map(attr => (
           <Card key={attr.id} className="group hover:shadow-xl transition-all duration-300 border-l-4 border-l-blue-600 overflow-hidden">
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-4">
@@ -165,6 +183,20 @@ export function AttributeDefinitions() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Pagination */}
+      <div className="bg-white rounded-xl shadow-sm border p-2">
+        <DataPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={goToPage}
+          canGoNext={canGoNext}
+          canGoPrevious={canGoPrevious}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          totalItems={totalItems}
+        />
       </div>
 
       {filtered.length === 0 && (

@@ -18,10 +18,14 @@ public class OrderDTO {
     private String userId;
     private BigDecimal totalAmount;
     private String status;
+    private String shippingFullName;
+    private String shippingEmail;
+    private String shippingPhone;
     private String shippingAddress;
+    private String shippingWard;
+    private String shippingDistrict;
     private String shippingCity;
     private String shippingPostalCode;
-    private String shippingPhone;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<OrderItemDTO> items;

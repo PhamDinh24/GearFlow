@@ -14,6 +14,8 @@ import { CreditCard, Search, Calendar, CheckCircle2, XCircle, Clock } from "luci
 import { adminApi } from "../../services/api";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
+import { usePagination } from "../../hooks/usePagination";
+import { DataPagination } from "../ui/data-pagination";
 
 export function Payments() {
   const [payments, setPayments] = useState<any[]>([]);
@@ -69,6 +71,22 @@ export function Payments() {
     p.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.transactionId && p.transactionId.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // Pagination
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: paginatedPayments,
+    goToPage,
+    canGoNext,
+    canGoPrevious,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination({
+    items: filteredPayments,
+    itemsPerPage: 12,
+  });
 
   return (
     <AdminPageWrapper title="Quản lý thanh toán" description="Theo dõi lịch sử giao dịch và trạng thái thanh toán">
@@ -126,7 +144,7 @@ export function Payments() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredPayments.map((payment) => (
+                    {paginatedPayments.map((payment) => (
                       <TableRow key={payment.id} className="hover:bg-slate-50 transition-colors">
                         <TableCell className="font-medium">
                           #{payment.orderId.substring(0, 8)}...
@@ -162,6 +180,18 @@ export function Payments() {
               </div>
             )}
           </CardContent>
+          <div className="border-t border-slate-100">
+            <DataPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+              canGoNext={canGoNext}
+              canGoPrevious={canGoPrevious}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              totalItems={totalItems}
+            />
+          </div>
         </Card>
       </div>
     </AdminPageWrapper>

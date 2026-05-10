@@ -16,20 +16,29 @@ export interface Order {
   userId: string;
   totalAmount: number;
   status: 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  shippingFullName: string;
+  shippingEmail: string;
+  shippingPhone: string;
   shippingAddress: string;
+  shippingWard: string;
+  shippingDistrict: string;
   shippingCity: string;
   shippingPostalCode: string;
-  shippingPhone: string;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
 }
 
 export interface CreateOrderRequest {
-  shippingAddress: string;
-  shippingCity: string;
-  shippingPostalCode: string;
-  shippingPhone: string;
+  addressId?: string;
+  shippingFullName?: string;
+  shippingEmail?: string;
+  shippingPhone?: string;
+  shippingAddress?: string;
+  shippingWard?: string;
+  shippingDistrict?: string;
+  shippingCity?: string;
+  shippingPostalCode?: string;
 }
 
 export const orderService = {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router";
+import { useParams, Link, useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { productService, type Product, type ProductVariant } from "../services/productService";
 import { reviewService, type Review } from "../services/reviewService";
@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 export function ProductDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,12 +94,12 @@ export function ProductDetail() {
   const handleAddToCart = async () => {
     if (!selectedVariant) {
       toast.error('Vui lòng chọn phiên bản sản phẩm');
-      return;
+      return false;
     }
     
     if (!isLoggedIn) {
       toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
-      return;
+      return false;
     }
     
     try {
@@ -106,8 +107,17 @@ export function ProductDetail() {
       toast.success(`Đã thêm ${quantity} sản phẩm vào giỏ hàng`, { 
         description: product.name 
       });
+      return true;
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể thêm vào giỏ hàng');
+      return false;
+    }
+  };
+
+  const handleBuyNow = async () => {
+    const success = await handleAddToCart();
+    if (success) {
+      navigate('/checkout');
     }
   };
 
@@ -364,15 +374,14 @@ export function ProductDetail() {
                 </Button>
               </div>
 
-              <Link to="/checkout">
                 <Button 
                   size="lg" 
                   className="w-full h-13 bg-slate-900 hover:bg-slate-800 text-white rounded-xl"
                   disabled={product.stock === 0}
+                  onClick={handleBuyNow}
                 >
                   Mua ngay
                 </Button>
-              </Link>
             </div>
           </div>
         </div>

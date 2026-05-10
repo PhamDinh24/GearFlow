@@ -23,6 +23,8 @@ import { Search, Eye } from "lucide-react";
 import { adminApi, orderApi, userApi } from "../../services/api";
 import { OrderDTO } from "../../app/types";
 import { toast } from "sonner";
+import { usePagination } from "../../hooks/usePagination";
+import { DataPagination } from "../ui/data-pagination";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "../ui/dialog";
@@ -58,6 +60,22 @@ export function Orders() {
     const matchesStatus = statusFilter === 'all' || order.status.toLowerCase() === statusFilter.toLowerCase();
     
     return matchesSearch && matchesStatus;
+  });
+
+  // Pagination
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: paginatedOrders,
+    goToPage,
+    canGoNext,
+    canGoPrevious,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination({
+    items: filteredOrders,
+    itemsPerPage: 12,
   });
 
   const getStatusColor = (status: string) => {
@@ -191,7 +209,7 @@ export function Orders() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.map((order) => {
+                  {paginatedOrders.map((order) => {
                     const firstItem = order.items && order.items[0];
                     const itemCount = order.items ? order.items.length : 0;
                     const firstItemName = (firstItem as any)?.productName || 'Sản phẩm';
@@ -235,6 +253,18 @@ export function Orders() {
                   })}
                 </TableBody>
               </Table>
+            </div>
+            <div className="border-t border-slate-100">
+              <DataPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={goToPage}
+                canGoNext={canGoNext}
+                canGoPrevious={canGoPrevious}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                totalItems={totalItems}
+              />
             </div>
           </CardContent>
         </Card>

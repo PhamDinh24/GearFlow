@@ -30,16 +30,33 @@ public class PaymentService {
     private final ProductService productService;
 
     @Value("${vnpay.tmnCode:}")
-    private String vnpayTmnCode;
+    private String vnpayTmnCodeRaw;
 
     @Value("${vnpay.hashSecret:}")
-    private String vnpayHashSecret;
+    private String vnpayHashSecretRaw;
 
     @Value("${vnpay.apiUrl:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
-    private String vnpayApiUrl;
+    private String vnpayApiUrlRaw;
 
     @Value("${vnpay.returnUrl:http://localhost:5173/payment-result}")
-    private String vnpayReturnUrl;
+    private String vnpayReturnUrlRaw;
+
+    // Trimmed values to remove any whitespace
+    public String getVnpayTmnCode() {
+        return vnpayTmnCodeRaw.trim();
+    }
+
+    public String getVnpayHashSecret() {
+        return vnpayHashSecretRaw.trim();
+    }
+
+    public String getVnpayApiUrl() {
+        return vnpayApiUrlRaw.trim();
+    }
+
+    public String getVnpayReturnUrl() {
+        return vnpayReturnUrlRaw.trim();
+    }
 
     @Transactional
     public PaymentDTO createPayment(String orderId, String paymentMethod) {
@@ -102,38 +119,65 @@ public class PaymentService {
         return toDTO(payment);
     }
 
-    public Map<String, String> generateVNPayRequest(String paymentId) throws UnsupportedEncodingException {
+    public Map<String, String> generateVNPayRequest(String paymentId, String clientIp) throws UnsupportedEncodingException {
         log.info("Generating VNPay request for payment: {}", paymentId);
         
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
 
+        // Generate numeric VNPay reference if not already generated
+        String vnpayRef = payment.getVnpayRef();
+        if (vnpayRef == null || vnpayRef.isEmpty()) {
+            vnpayRef = generateNumericReference(payment.getId());
+            payment.setVnpayRef(vnpayRef);
+            payment = paymentRepository.save(payment);
+            log.info("Generated VNPay numeric reference: {}", vnpayRef);
+        }
+
+        // Retrieve trimmed config values
+        String tmnCode = getVnpayTmnCode();
+        String hashSecret = getVnpayHashSecret();
+        String apiUrl = getVnpayApiUrl();
+        String returnUrl = getVnpayReturnUrl();
+        
+        String ip = clientIp != null && !clientIp.isEmpty() ? clientIp : "127.0.0.1";
+        if (ip.length() > 15) {
+            ip = "127.0.0.1"; // VNPay limits IP to 15 chars
+        }
+
+        log.debug("VNPay config - TMN: {}, ApiUrl: {}, ReturnUrl: {}", tmnCode, apiUrl, returnUrl);
+
         // Use TreeMap to auto-sort keys alphabetically (required by VNPay)
         Map<String, String> vnpParams = new TreeMap<>();
         vnpParams.put("vnp_Version", "2.1.0");
         vnpParams.put("vnp_Command", "pay");
-        vnpParams.put("vnp_TmnCode", vnpayTmnCode);
+        vnpParams.put("vnp_TmnCode", tmnCode);
         vnpParams.put("vnp_Amount", String.valueOf(payment.getAmount().multiply(java.math.BigDecimal.valueOf(100)).longValue()));
         vnpParams.put("vnp_CurrCode", "VND");
-        vnpParams.put("vnp_TxnRef", payment.getOrderId());
+        vnpParams.put("vnp_TxnRef", vnpayRef);  // Use numeric reference instead of UUID
         vnpParams.put("vnp_OrderInfo", "Thanh toan don hang " + payment.getOrderId());
         vnpParams.put("vnp_OrderType", "other");
         vnpParams.put("vnp_Locale", "vn");
-        vnpParams.put("vnp_ReturnUrl", vnpayReturnUrl);
-        vnpParams.put("vnp_CreateDate", new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
-        vnpParams.put("vnp_IpAddr", "127.0.0.1");
-        vnpParams.put("vnp_ExpireDate", new SimpleDateFormat("yyyyMMddHHmmss").format(new Date(System.currentTimeMillis() + 900000)));
-
-        // Step 1: Build sign data with RAW values (no encoding) - this is what VNPay hashes
-        String signData = buildSignDataRaw(vnpParams);
-        log.info("VNPay sign data (raw): {}", signData);
+        vnpParams.put("vnp_ReturnUrl", returnUrl);
         
-        String vnpSecureHash = hmacSHA512(vnpayHashSecret, signData);
+        TimeZone vnTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+        formatter.setTimeZone(vnTimeZone);
+        
+        vnpParams.put("vnp_CreateDate", formatter.format(new Date()));
+        vnpParams.put("vnp_IpAddr", ip);
+        vnpParams.put("vnp_ExpireDate", formatter.format(new Date(System.currentTimeMillis() + 900000)));
+
+        // Step 1: Build sign data with URL-encoded values (VNPay 2.1.0 requirement)
+        String signData = buildSignData(vnpParams);
+        log.info("VNPay sign data (encoded): {}", signData);
+        
+        String vnpSecureHash = hmacSHA512(hashSecret, signData);
         log.info("VNPay secure hash: {}", vnpSecureHash);
         
         // Step 2: Build URL with URL-encoded values (for HTTP transport)
         String queryString = buildQueryStringEncoded(vnpParams);
-        String paymentUrl = vnpayApiUrl + "?" + queryString + "&vnp_SecureHash=" + vnpSecureHash;
+        String paymentUrl = apiUrl + "?" + queryString + "&vnp_SecureHash=" + vnpSecureHash;
         log.info("VNPay payment URL: {}", paymentUrl);
         
         Map<String, String> result = new HashMap<>();
@@ -147,6 +191,7 @@ public class PaymentService {
         log.info("Verifying VNPay payment callback with params: {}", params.keySet());
         
         String vnpSecureHash = params.get("vnp_SecureHash");
+        String hashSecret = getVnpayHashSecret();
         
         // Build a new TreeMap without hash fields for verification
         // Params from callback are already URL-decoded by Spring (raw values)
@@ -157,9 +202,9 @@ public class PaymentService {
             }
         }
 
-        // Use RAW values for verification (same as when signing)
-        String signData = buildSignDataRaw(verifyParams);
-        String computedHash = hmacSHA512(vnpayHashSecret, signData);
+        // Use encoded values for verification (must match the signing logic)
+        String signData = buildSignData(verifyParams);
+        String computedHash = hmacSHA512(hashSecret, signData);
 
         log.info("Verify - Received Hash: {}", vnpSecureHash);
         log.info("Verify - Computed Hash: {}", computedHash);
@@ -171,10 +216,11 @@ public class PaymentService {
 
         String responseCode = params.get("vnp_ResponseCode");
         String transactionId = params.get("vnp_TransactionNo");
-        String orderId = params.get("vnp_TxnRef");
+        String vnpayRef = params.get("vnp_TxnRef");  // This is the numeric reference
 
-        Payment payment = paymentRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+        // Look up payment using the numeric vnpay reference
+        Payment payment = paymentRepository.findByVnpayRef(vnpayRef)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment not found for vnpay ref: " + vnpayRef));
 
         // Check for duplicate processing
         if (payment.getStatus() == Payment.PaymentStatus.SUCCESS) {
@@ -231,22 +277,58 @@ public class PaymentService {
     }
 
     /**
-     * Build sign data with RAW (un-encoded) values.
-     * This is what VNPay uses to compute/verify the HMAC hash.
-     * Format: key1=value1&key2=value2 (sorted by key, no URL encoding)
+     * Generate a numeric transaction reference from a UUID payment ID.
+     * VNPay requires numeric TxnRef, so we convert the hex UUID to a number.
      */
-    private String buildSignDataRaw(Map<String, String> params) {
+    private String generateNumericReference(String paymentId) {
+        // Convert UUID to numeric reference for VNPay (which requires numeric TxnRef)
+        // Remove hyphens from UUID and hash to get a numeric string
+        String uuidWithoutHyphens = paymentId.replace("-", "");
+        
+        // Convert hex string to numeric by taking first 16 characters and converting
+        long numericRef = 0;
+        for (int i = 0; i < Math.min(16, uuidWithoutHyphens.length()); i++) {
+            char c = uuidWithoutHyphens.charAt(i);
+            numericRef = numericRef * 16 + Integer.parseInt(String.valueOf(c), 16);
+            // Keep it under 18 digits to ensure it fits in a long
+            if (numericRef > 9999999999999999L) {
+                numericRef = numericRef % 9999999999999999L;
+            }
+        }
+        
+        // Ensure it's positive and has at least 8 digits
+        numericRef = Math.abs(numericRef);
+        String result = String.format("%016d", numericRef);
+        log.debug("Generated numeric ref from payment ID {}: {}", paymentId, result);
+        return result;
+    }
+
+    /**
+     * Build hash data string for VNPay signature computation.
+     * Format: key1=URLEncode(value1)&key2=URLEncode(value2) (sorted by key)
+     * Uses US_ASCII charset and keeps '+' for spaces, matching VNPay's official demo.
+     */
+    private String buildSignData(Map<String, String> params) {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
         for (Map.Entry<String, String> entry : params.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
-            if ("vnp_SecureHash".equals(key) || "vnp_SecureHashType".equals(key) || "vnp_ApiUrl".equals(key)) {
+            
+            // Exclude hash fields and other non-vnp params
+            if (!key.startsWith("vnp_") || "vnp_SecureHash".equals(key) || "vnp_SecureHashType".equals(key)) {
                 continue;
             }
+            
             if (value != null && !value.isEmpty()) {
                 if (!first) sb.append("&");
-                sb.append(key).append("=").append(value); // RAW value, no encoding
+                try {
+                    sb.append(key).append("=");
+                    // VNPay official: URLEncoder.encode with US_ASCII, keep '+' for spaces
+                    sb.append(URLEncoder.encode(value, StandardCharsets.US_ASCII.toString()));
+                } catch (UnsupportedEncodingException e) {
+                    log.error("Encoding error for field: {}", key, e);
+                }
                 first = false;
             }
         }
@@ -270,9 +352,9 @@ public class PaymentService {
             if (value != null && !value.isEmpty()) {
                 if (!first) sb.append("&");
                 try {
-                    sb.append(URLEncoder.encode(key, StandardCharsets.UTF_8.toString()));
+                    sb.append(URLEncoder.encode(key, StandardCharsets.US_ASCII.toString()));
                     sb.append("=");
-                    sb.append(URLEncoder.encode(value, StandardCharsets.UTF_8.toString()).replace("+", "%20"));
+                    sb.append(URLEncoder.encode(value, StandardCharsets.US_ASCII.toString()));
                 } catch (UnsupportedEncodingException e) {
                     log.error("Encoding error for field: {}", key, e);
                 }

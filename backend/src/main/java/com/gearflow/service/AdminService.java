@@ -304,15 +304,10 @@ public class AdminService {
     public OrderDTO updateOrderStatus(String orderId, String status) {
         log.info("Updating order {} status to {}", orderId, status);
         
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new com.gearflow.exception.ResourceNotFoundException("Order not found: " + orderId));
-        
         try {
             Order.OrderStatus orderStatus = Order.OrderStatus.valueOf(status.toUpperCase());
-            order.setStatus(orderStatus);
-            Order updated = orderRepository.save(order);
-            log.info("Order status updated successfully");
-            return orderService.toDTO(updated);
+            // Delegate to OrderService to ensure validation and stock handling are applied
+            return orderService.updateOrderStatus(orderId, orderStatus);
         } catch (IllegalArgumentException e) {
             log.error("Invalid order status: {}", status);
             throw new IllegalArgumentException("Invalid order status: " + status);

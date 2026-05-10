@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { motion } from "framer-motion";
 import type { WishlistDTO } from "../../types";
 import { Card, CardContent, CardFooter } from "../ui/card";
@@ -11,6 +11,7 @@ import { useCart } from "../../context/CartContext";
 import { wishlistApi } from "../../services/api";
 
 export function Wishlist() {
+  const navigate = useNavigate();
   const [wishlist, setWishlist] = useState<WishlistDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
@@ -41,13 +42,16 @@ export function Wishlist() {
     }
   };
 
-  const handleAddToCart = async (item: WishlistDTO) => {
+  const handleAddToCart = async (item: WishlistDTO, redirect = false) => {
     try {
       const variantId = item.product?.variants && item.product.variants.length > 0
         ? item.product.variants[0].id
         : item.productId;
       await addToCart(variantId, 1);
       toast.success('Đã thêm vào giỏ hàng');
+      if (redirect) {
+        navigate('/checkout');
+      }
     } catch (error) {
       toast.error('Không thể thêm vào giỏ hàng');
     }
@@ -164,7 +168,7 @@ export function Wishlist() {
                     <div className="flex gap-2">
                        <Button 
                         className="flex-1 bg-slate-900 hover:bg-blue-600 text-white rounded-xl h-11 font-bold transition-all shadow-lg shadow-slate-200"
-                        onClick={() => handleAddToCart(item)}
+                        onClick={() => handleAddToCart(item, true)}
                         disabled={product.stock === 0}
                       >
                         <ShoppingCart className="w-4 h-4 mr-2" />

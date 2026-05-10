@@ -13,6 +13,8 @@ import com.gearflow.repository.OrderRepository;
 import com.gearflow.repository.ProductRepository;
 import com.gearflow.repository.ProductVariantRepository;
 import com.gearflow.repository.UserRepository;
+import com.gearflow.repository.ShippingAddressRepository;
+import com.gearflow.entity.ShippingAddress;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,6 +34,7 @@ public class OrderService {
     private final ProductVariantRepository variantRepository;
     private final CartService cartService;
     private final ProductService productService;
+    private final ShippingAddressRepository addressRepository;
 
     @Transactional
     public OrderDTO createOrder(String userId, OrderRequest request) {
@@ -46,11 +49,35 @@ public class OrderService {
             throw new BusinessException("Cart is empty");
         }
 
-        // Validate shipping info
-        if (request.getShippingAddress() == null || request.getShippingAddress().trim().isEmpty()) {
+        // Handle shipping info
+        String fullName = request.getShippingFullName();
+        String phone = request.getShippingPhone();
+        String email = request.getShippingEmail();
+        String addressLine = request.getShippingAddress();
+        String ward = request.getShippingWard();
+        String district = request.getShippingDistrict();
+        String city = request.getShippingCity();
+        String postalCode = request.getShippingPostalCode();
+
+        // If addressId is provided, override with data from repository
+        if (request.getAddressId() != null && !request.getAddressId().trim().isEmpty()) {
+            ShippingAddress savedAddress = addressRepository.findByIdAndUserId(request.getAddressId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Shipping address not found: " + request.getAddressId()));
+            fullName = savedAddress.getFullName();
+            phone = savedAddress.getPhone();
+            email = savedAddress.getEmail();
+            addressLine = savedAddress.getAddress();
+            ward = savedAddress.getWard();
+            district = savedAddress.getDistrict();
+            city = savedAddress.getCity();
+            postalCode = savedAddress.getPostalCode();
+        }
+
+        // Validate basic shipping info
+        if (addressLine == null || addressLine.trim().isEmpty()) {
             throw new BusinessException("Shipping address is required");
         }
-        if (request.getShippingPhone() == null || request.getShippingPhone().trim().isEmpty()) {
+        if (phone == null || phone.trim().isEmpty()) {
             throw new BusinessException("Shipping phone is required");
         }
 
@@ -60,10 +87,14 @@ public class OrderService {
                 .userId(user.getId())
                 .status(Order.OrderStatus.PENDING)
                 .totalAmount(cartDTO.getTotalPrice())
-                .shippingAddress(request.getShippingAddress())
-                .shippingCity(request.getShippingCity())
-                .shippingPostalCode(request.getShippingPostalCode())
-                .shippingPhone(request.getShippingPhone())
+                .shippingFullName(fullName)
+                .shippingEmail(email)
+                .shippingPhone(phone)
+                .shippingAddress(addressLine)
+                .shippingWard(ward)
+                .shippingDistrict(district)
+                .shippingCity(city)
+                .shippingPostalCode(postalCode)
                 .build();
 
         // Add items
@@ -116,6 +147,11 @@ public class OrderService {
         // Validate status transition
         validateStatusTransition(order.getStatus(), newStatus);
 
+        // If transitioning to CANCELLED, restore stock
+        if (newStatus == Order.OrderStatus.CANCELLED) {
+            handleStockRestoration(order);
+        }
+
         order.setStatus(newStatus);
         order = orderRepository.save(order);
 
@@ -141,12 +177,8 @@ public class OrderService {
             throw new BusinessException("Cannot cancel order in " + order.getStatus() + " status");
         }
 
-        // Restore stock for each item when order is cancelled
-        for (var item : order.getItems()) {
-            if (item.getVariantId() != null) {
-                productService.incrementStock(item.getVariantId(), item.getQuantity());
-            }
-        }
+        // Restore stock
+        handleStockRestoration(order);
 
         order.setStatus(Order.OrderStatus.CANCELLED);
         order = orderRepository.save(order);
@@ -178,23 +210,35 @@ public class OrderService {
         }
 
         // Restore stock
-        if (order.getItems() != null) {
-            for (var item : order.getItems()) {
-                if (item.getVariantId() != null) {
-                    try {
-                        productService.incrementStock(item.getVariantId(), item.getQuantity());
-                    } catch (Exception e) {
-                        log.error("Error restoring stock", e);
-                    }
-                }
-            }
-        }
+        handleStockRestoration(order);
 
         order.setStatus(Order.OrderStatus.CANCELLED);
         order.setUpdatedAt(java.time.LocalDateTime.now());
         
         order = orderRepository.save(order);
         return toDTO(order);
+    }
+
+    private void handleStockRestoration(Order order) {
+        if (order.getItems() == null) return;
+        
+        for (var item : order.getItems()) {
+            if (item.getVariantId() != null) {
+                try {
+                    if (order.getStatus() == Order.OrderStatus.PENDING) {
+                        // For PENDING orders, stock was only reserved
+                        productService.releaseReservedStock(item.getVariantId(), item.getQuantity());
+                        log.info("Released reserved stock for variant: {} qty: {}", item.getVariantId(), item.getQuantity());
+                    } else if (order.getStatus() != Order.OrderStatus.CANCELLED) {
+                        // For orders beyond PENDING (CONFIRMED, PROCESSING, etc.), stock was already decremented
+                        productService.incrementStock(item.getVariantId(), item.getQuantity());
+                        log.info("Incremented stock for variant: {} qty: {}", item.getVariantId(), item.getQuantity());
+                    }
+                } catch (Exception e) {
+                    log.error("Error restoring stock for variant: {}", item.getVariantId(), e);
+                }
+            }
+        }
     }
 
     private void validateStatusTransition(Order.OrderStatus currentStatus, Order.OrderStatus newStatus) {
@@ -234,10 +278,14 @@ public class OrderService {
                 .userId(order.getUserId())
                 .status(order.getStatus().toString())
                 .totalAmount(order.getTotalAmount())
+                .shippingFullName(order.getShippingFullName())
+                .shippingEmail(order.getShippingEmail())
+                .shippingPhone(order.getShippingPhone())
                 .shippingAddress(order.getShippingAddress())
+                .shippingWard(order.getShippingWard())
+                .shippingDistrict(order.getShippingDistrict())
                 .shippingCity(order.getShippingCity())
                 .shippingPostalCode(order.getShippingPostalCode())
-                .shippingPhone(order.getShippingPhone())
                 .items(order.getItems() != null ? order.getItems().stream()
                         .map(item -> OrderItemDTO.builder()
                                 .id(item.getId())

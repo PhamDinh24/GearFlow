@@ -14,6 +14,8 @@ import { Plus, Edit, Trash2, Search, Tag, ToggleLeft, ToggleRight } from "lucide
 import { toast } from "sonner";
 import { categoryApi } from "../../services/api";
 import { CategoryDTO } from "../../app/types";
+import { usePagination } from "../../hooks/usePagination";
+import { DataPagination } from "../ui/data-pagination";
 
 export function Categories() {
   const [categories, setCategories] = useState<CategoryDTO[]>([]);
@@ -40,6 +42,22 @@ export function Categories() {
     const matchSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchSearch;
+  });
+
+  // Pagination
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: paginatedCategories,
+    goToPage,
+    canGoNext,
+    canGoPrevious,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination({
+    items: filtered,
+    itemsPerPage: 12,
   });
 
   const handleToggle = (id: string) => {
@@ -138,7 +156,7 @@ export function Categories() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(cat => (
+                {paginatedCategories.map(cat => (
                   <TableRow key={cat.id} className="hover:bg-slate-50">
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -171,6 +189,17 @@ export function Categories() {
               </TableBody>
             </Table>
           </div>
+          {/* Pagination */}
+          <DataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={goToPage}
+            canGoNext={canGoNext}
+            canGoPrevious={canGoPrevious}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            totalItems={totalItems}
+          />
         </div>
       </div>
 

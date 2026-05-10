@@ -16,7 +16,8 @@ import {
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "../ui/tabs";
-import { Search, Plus, Edit, Eye, EyeOff, Package, TrendingUp, Info, Trash2 } from "lucide-react";
+import { Search, Plus, Edit, Eye, EyeOff, Package, TrendingUp, Info, Trash2, Camera, Loader2 } from "lucide-react";
+import { imageService } from "../../services/imageService";
 import { toast } from "sonner";
 import { productApi } from "../../services/api";
 import { variantService } from "../../services/variantService";
@@ -453,6 +454,41 @@ export function Products() {
             <DialogDescription>Cập nhật thông tin sản phẩm</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Image Upload Section */}
+            <div className="flex justify-center mb-6">
+              <div className="relative group">
+                <div className="w-40 h-40 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+                  {editingProduct?.imageUrl ? (
+                    <img src={editingProduct.imageUrl} alt={editingProduct.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Package className="w-12 h-12 text-slate-300" />
+                  )}
+                </div>
+                <label className="absolute inset-0 bg-black/40 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <Camera className="w-8 h-8 text-white mb-1" />
+                  <span className="text-[10px] font-bold text-white uppercase tracking-widest">Tải ảnh lên</span>
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file && editingProduct) {
+                        try {
+                          const imageUrl = await imageService.uploadProductImage(editingProduct.id, file);
+                          setEditingProduct({ ...editingProduct, imageUrl });
+                          toast.success('Đã cập nhật ảnh sản phẩm');
+                          loadProducts(); // Refresh list
+                        } catch (error) {
+                          toast.error('Không thể tải ảnh lên');
+                        }
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+
             <div>
               <Label className="mb-1.5 block text-sm font-medium">Tên sản phẩm</Label>
               <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="rounded-xl" />

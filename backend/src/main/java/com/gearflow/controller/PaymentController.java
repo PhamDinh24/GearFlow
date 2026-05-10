@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
@@ -26,10 +27,29 @@ public class PaymentController {
     }
 
     @GetMapping("/{paymentId}/vnpay-url")
-    public ResponseEntity<Map<String, String>> getVNPayUrl(@PathVariable String paymentId) throws UnsupportedEncodingException {
+    public ResponseEntity<Map<String, String>> getVNPayUrl(@PathVariable String paymentId, HttpServletRequest request) throws UnsupportedEncodingException {
         log.info("GET /api/payment/{}/vnpay-url", paymentId);
-        Map<String, String> vnpayParams = paymentService.generateVNPayRequest(paymentId);
+        String clientIp = getClientIp(request);
+        Map<String, String> vnpayParams = paymentService.generateVNPayRequest(paymentId, clientIp);
         return ResponseEntity.ok(vnpayParams);
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        // Get first IP if multiple IPs are present (X-Forwarded-For can have multiple)
+        if (ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 
     @GetMapping("/{paymentId}")

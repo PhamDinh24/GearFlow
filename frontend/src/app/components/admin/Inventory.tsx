@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminService } from "../../services/adminService";
+import { usePagination } from "../../hooks/usePagination";
+import { DataPagination } from "../ui/data-pagination";
 
 interface StockItem {
   variantId: string;
@@ -87,6 +89,22 @@ export function Inventory() {
       (filterStatus === 'low' && item.available < 5) ||
       (filterStatus === 'instock' && item.available >= 5);
     return matchesFilter;
+  });
+
+  // Pagination
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: paginatedStock,
+    goToPage,
+    canGoNext,
+    canGoPrevious,
+    startIndex,
+    endIndex,
+    totalItems: totalItemsCount,
+  } = usePagination({
+    items: filteredItems,
+    itemsPerPage: 12,
   });
 
   const totalItems = stockItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -206,7 +224,7 @@ export function Inventory() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredItems.map((item) => (
+                  {paginatedStock.map((item) => (
                     <TableRow key={item.variantId}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -250,6 +268,18 @@ export function Inventory() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+            <div className="border-t border-slate-100">
+              <DataPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={goToPage}
+                canGoNext={canGoNext}
+                canGoPrevious={canGoPrevious}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                totalItems={totalItemsCount}
+              />
             </div>
           </CardContent>
         </Card>

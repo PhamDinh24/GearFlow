@@ -55,7 +55,7 @@ server:
     context-path: /api
 
 jwt:
-  secret: $(JWT_SECRET:gearflow-secret-key-2024-spring-boot-jwt-authentication-authorization-token-security)
+  secret: ${JWT_SECRET:gearflow-secret-key-2024-spring-boot-jwt-authentication-authorization-token-security}
   expiration: 86400000
   refresh-expiration: 604800000
 
@@ -78,10 +78,10 @@ app:
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:def4abpgi}
   api-key: ${CLOUDINARY_API_KEY:182333839669878}
-  api-secret: $(CLOUDINARY_API_SECRET:ooupF5SSAvpyQIyHeRyHQccCX2k)
+  api-secret: ${CLOUDINARY_API_SECRET:ooupF5SSAvpyQIyHeRyHQccCX2k}
 
 vnpay:
-  tmnCode: ${VNPAY_TMN_CODE:MLBT9IZW}
-  hashSecret: ${VNPAY_HASH_SECRET:U1C7GCCO2F7TDUH7T7OP9QF8ZIP0H768}
-  apiUrl: ${VNPAY_API_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+  tmnCode: MLBT9IZW
+  hashSecret: U1C7GCCO2F7TDUH7T7OP9QF8ZIP0H768
+  apiUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
   returnUrl: ${VNPAY_RETURN_URL:http://localhost:5173/payment-result}
