@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 import java.time.LocalDateTime;
 
 @Entity
@@ -16,6 +18,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SQLDelete(sql = "UPDATE shipping_addresses SET is_deleted = true WHERE id = ?")
+@Where(clause = "is_deleted = false")
 public class ShippingAddress {
     
     @Id
@@ -54,4 +58,8 @@ public class ShippingAddress {
     
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 }

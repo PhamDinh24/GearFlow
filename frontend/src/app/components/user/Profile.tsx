@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { User, ShoppingBag, Heart, MapPin, Lock, LogOut, ChevronRight, Edit3, Save, X } from "lucide-react";
+import { User, ShoppingBag, Heart, MapPin, Lock, LogOut, ChevronRight, Edit3, Save, X, Camera, Loader2 } from "lucide-react";
+import { imageService } from "../../services/imageService";
 import { useAuth } from "../../context/AuthContext";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -95,8 +96,46 @@ export function Profile() {
             transition={{ duration: 0.5 }}
             className="flex flex-col md:flex-row items-center gap-8 text-center md:text-left"
           >
-            <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-blue-500/20">
-              <User className="w-12 h-12 text-white" />
+            <div className="relative group">
+              <div className="w-32 h-32 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-blue-500/20 overflow-hidden relative">
+                {user.imageUrl ? (
+                  <img src={user.imageUrl} alt={user.fullName} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-16 h-16 text-white" />
+                )}
+                
+                {/* Upload Overlay */}
+                <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  {loading ? (
+                    <Loader2 className="w-8 h-8 text-white animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="w-8 h-8 text-white mb-1" />
+                      <span className="text-[10px] font-bold text-white uppercase tracking-widest">Cập nhật</span>
+                    </>
+                  )}
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file && user) {
+                        try {
+                          setLoading(true);
+                          const imageUrl = await imageService.uploadUserImage(user.id, file);
+                          setUser({ ...user, imageUrl });
+                          toast.success('Đã cập nhật ảnh đại diện');
+                        } catch (error) {
+                          toast.error('Không thể tải ảnh lên');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }
+                    }}
+                  />
+                </label>
+              </div>
             </div>
             <div>
               <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">{user.fullName}</h1>

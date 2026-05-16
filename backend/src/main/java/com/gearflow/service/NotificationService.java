@@ -37,6 +37,12 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
+    public long countUnread(String userId) {
+        log.info("Counting unread notifications for user: {}", userId);
+        return notificationRepository.countByUserIdAndIsReadFalse(userId);
+    }
+
+    @Transactional(readOnly = true)
     public NotificationDTO getNotificationById(String id) {
         log.info("Fetching notification with id: {}", id);
         Notification notification = notificationRepository.findById(id)

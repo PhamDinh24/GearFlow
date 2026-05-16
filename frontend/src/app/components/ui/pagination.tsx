@@ -1,156 +1,142 @@
-import React from 'react';
-import { Button } from './button';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import * as React from "react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MoreHorizontalIcon,
+} from "lucide-react";
 
-interface PaginationProps {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  onPageChange: (page: number) => void;
-}
+import { cn } from "./utils";
+import { Button, buttonVariants } from "./button";
 
-export function Pagination({
-  currentPage,
-  totalPages,
-  totalItems,
-  itemsPerPage,
-  onPageChange,
-}: PaginationProps) {
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
-
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
-          pages.push(i);
-        }
-        pages.push('...');
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1);
-        pages.push('...');
-        for (let i = totalPages - 3; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        pages.push(1);
-        pages.push('...');
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-          pages.push(i);
-        }
-        pages.push('...');
-        pages.push(totalPages);
-      }
-    }
-
-    return pages;
-  };
-
-  if (totalPages <= 1) return null;
-
+function Pagination({
+  className,
+  ...props
+}: React.ComponentProps<"nav">) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 sm:px-6">
-      <div className="flex-1 flex justify-between sm:hidden">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          Trước
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          Sau
-        </Button>
-      </div>
-      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm text-gray-700">
-            Hiển thị <span className="font-medium">{startItem}</span> đến{' '}
-            <span className="font-medium">{endItem}</span> trong tổng số{' '}
-            <span className="font-medium">{totalItems}</span> kết quả
-          </p>
-        </div>
-        <div>
-          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            {/* First Page */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(1)}
-              disabled={currentPage === 1}
-              className="rounded-l-md"
-            >
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-
-            {/* Previous Page */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-
-            {/* Page Numbers */}
-            {getPageNumbers().map((page, index) => (
-              <React.Fragment key={index}>
-                {page === '...' ? (
-                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                    ...
-                  </span>
-                ) : (
-                  <Button
-                    variant={currentPage === page ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => onPageChange(page as number)}
-                    className={currentPage === page ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
-                  >
-                    {page}
-                  </Button>
-                )}
-              </React.Fragment>
-            ))}
-
-            {/* Next Page */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-
-            {/* Last Page */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(totalPages)}
-              disabled={currentPage === totalPages}
-              className="rounded-r-md"
-            >
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </nav>
-        </div>
-      </div>
-    </div>
+    <nav
+      role="navigation"
+      aria-label="pagination"
+      data-slot="pagination"
+      className={cn("mx-auto flex w-full justify-center", className)}
+      {...props}
+    />
   );
 }
+
+function PaginationContent({
+  className,
+  ...props
+}: React.ComponentProps<"ul">) {
+  return (
+    <ul
+      data-slot="pagination-content"
+      className={cn("flex flex-row items-center gap-1", className)}
+      {...props}
+    />
+  );
+}
+
+function PaginationItem({ ...props }: React.ComponentProps<"li">) {
+  return <li data-slot="pagination-item" {...props} />;
+}
+
+type PaginationLinkProps = {
+  isActive?: boolean;
+  onClick?: () => void;
+} & Pick<React.ComponentProps<typeof Button>, "size"> &
+  Omit<React.ComponentProps<"button">, "onClick">;
+
+function PaginationLink({
+  className,
+  isActive,
+  size = "icon",
+  onClick,
+  children,
+  ...props
+}: PaginationLinkProps) {
+  return (
+    <button
+      type="button"
+      aria-current={isActive ? "page" : undefined}
+      data-slot="pagination-link"
+      data-active={isActive}
+      onClick={onClick}
+      className={cn(
+        buttonVariants({
+          variant: isActive ? "outline" : "ghost",
+          size,
+        }),
+        "cursor-pointer",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PaginationPrevious({
+  className,
+  onClick,
+  ...props
+}: Omit<React.ComponentProps<typeof PaginationLink>, "children">) {
+  return (
+    <PaginationLink
+      aria-label="Go to previous page"
+      size="default"
+      onClick={onClick}
+      className={cn("gap-1 px-2.5 sm:pl-2.5", className)}
+      {...props}
+    >
+      <ChevronLeftIcon className="w-4 h-4" />
+      <span className="hidden sm:block">Previous</span>
+    </PaginationLink>
+  );
+}
+
+function PaginationNext({
+  className,
+  onClick,
+  ...props
+}: Omit<React.ComponentProps<typeof PaginationLink>, "children">) {
+  return (
+    <PaginationLink
+      aria-label="Go to next page"
+      size="default"
+      onClick={onClick}
+      className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
+      {...props}
+    >
+      <span className="hidden sm:block">Next</span>
+      <ChevronRightIcon className="w-4 h-4" />
+    </PaginationLink>
+  );
+}
+
+function PaginationEllipsis({
+  className,
+  ...props
+}: React.ComponentProps<"span">) {
+  return (
+    <span
+      aria-hidden
+      data-slot="pagination-ellipsis"
+      className={cn("flex size-9 items-center justify-center", className)}
+      {...props}
+    >
+      <MoreHorizontalIcon className="size-4" />
+      <span className="sr-only">More pages</span>
+    </span>
+  );
+}
+
+export {
+  Pagination,
+  PaginationContent,
+  PaginationLink,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+};

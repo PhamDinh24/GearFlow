@@ -22,7 +22,7 @@ type FilterOption = 'all' | '5' | '4' | '3' | '2' | '1';
 const ITEMS_PER_PAGE = 12;
 
 export function ProductReviews({ productId, productName }: ProductReviewsProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const [reviews, setReviews] = useState<ReviewDTO[]>([]);
   const [averageRating, setAverageRating] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,9 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
   const [comment, setComment] = useState('');
   const [hoveredStar, setHoveredStar] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null);
+
   // Filter and Sort states
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
@@ -71,7 +73,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(r => 
+      filtered = filtered.filter(r =>
         r.comment.toLowerCase().includes(query) ||
         r.userName?.toLowerCase().includes(query)
       );
@@ -107,7 +109,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
   }, [searchQuery, sortBy, filterRating]);
 
   const handleSubmitReview = async () => {
-    if (!isAuthenticated) {
+    if (!isLoggedIn) {
       toast.error('Vui lòng đăng nhập để đánh giá');
       return;
     }
@@ -133,7 +135,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
     } catch (error: any) {
       console.error('Error submitting review:', error);
       const errorMessage = error.message || error.response?.data?.message || 'Không thể gửi đánh giá';
-      
+
       // Check for specific error cases
       if (errorMessage.includes('already reviewed') || errorMessage.includes('đã đánh giá')) {
         toast.error('Bạn đã đánh giá sản phẩm này rồi. Vui lòng chỉnh sửa đánh giá cũ.');
@@ -145,17 +147,24 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
     }
   };
 
-  const handleDeleteReview = async (reviewId: string) => {
-    if (!confirm('Bạn có chắc muốn xóa đánh giá này?')) return;
+  const handleDeleteReview = async () => {
+    if (!reviewToDelete) return;
 
     try {
-      await reviewApi.deleteReview(reviewId);
+      await reviewApi.deleteReview(reviewToDelete);
       toast.success('Xóa đánh giá thành công');
+      setShowDeleteConfirm(false);
+      setReviewToDelete(null);
       loadReviews();
     } catch (error: any) {
       console.error('Error deleting review:', error);
       toast.error(error.message || 'Không thể xóa đánh giá');
     }
+  };
+
+  const confirmDelete = (reviewId: string) => {
+    setReviewToDelete(reviewId);
+    setShowDeleteConfirm(true);
   };
 
   const handleEditReview = (review: ReviewDTO) => {
@@ -177,13 +186,11 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`${sizeClasses[size]} ${
-              interactive ? 'cursor-pointer transition-all duration-200' : ''
-            } ${
-              star <= (interactive ? (hoveredStar || rating) : rating)
+            className={`${sizeClasses[size]} ${interactive ? 'cursor-pointer transition-all duration-200' : ''
+              } ${star <= (interactive ? (hoveredStar || rating) : rating)
                 ? 'fill-yellow-400 text-yellow-400'
                 : 'text-gray-300'
-            }`}
+              }`}
             onClick={() => interactive && setRating(star)}
             onMouseEnter={() => interactive && setHoveredStar(star)}
             onMouseLeave={() => interactive && setHoveredStar(0)}
@@ -207,168 +214,98 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
 
   return (
     <div className="space-y-6">
-      {/* Rating Summary */}
-      <Card className="border-none shadow-lg">
-        <CardHeader className="border-b bg-gradient-to-r from-yellow-50 to-orange-50">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl font-bold">Đánh Giá Sản Phẩm</CardTitle>
-              <p className="text-sm text-gray-500 mt-1">{productName}</p>
-            </div>
-            {isAuthenticated && !userHasReviewed && (
-              <Button
-                onClick={() => {
-                  setEditingReview(null);
-                  setRating(5);
-                  setComment('');
-                  setShowReviewDialog(true);
-                }}
-                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Viết Đánh Giá
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-8">
-            <div className="text-center">
-              <div className="text-5xl font-black text-gray-900 mb-2">
+      <Card className="border border-slate-200 shadow-sm overflow-hidden rounded-3xl">
+        <CardHeader className="border-b bg-slate-50/50 p-8">
+          <div className="flex flex-col md:flex-row items-center gap-12">
+            {/* Minimalist Score */}
+            <div className="flex flex-col items-center justify-center min-w-[160px]">
+              <div className="text-6xl font-black text-slate-900 mb-2 tracking-tighter">
                 {averageRating.toFixed(1)}
               </div>
-              {renderStars(Math.round(averageRating), false, 'lg')}
-              <p className="text-sm text-gray-500 mt-2">
+              <div className="mb-3">
+                {renderStars(Math.round(averageRating), false, 'lg')}
+              </div>
+              <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">
                 {reviews.length} đánh giá
               </p>
             </div>
-            <div className="flex-1">
+
+            {/* Distribution Bars */}
+            <div className="flex-1 w-full max-w-md">
               {[5, 4, 3, 2, 1].map((star) => {
                 const count = reviews.filter((r) => r.rating === star).length;
                 const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
                 return (
-                  <div key={star} className="flex items-center gap-3 mb-2">
-                    <div className="flex items-center gap-1 w-16">
-                      <span className="text-sm font-medium">{star}</span>
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <div key={star} className="flex items-center gap-4 mb-2 last:mb-0">
+                    <div className="flex items-center gap-1.5 w-10 shrink-0">
+                      <span className="text-xs font-bold text-slate-500">{star}</span>
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                     </div>
-                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-yellow-400 to-orange-400 transition-all duration-500"
+                        className="h-full bg-indigo-600 rounded-full transition-all duration-700 ease-out"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
-                    <span className="text-sm text-gray-500 w-12 text-right">{count}</span>
+                    <span className="text-[10px] font-bold text-slate-400 w-6 text-right">{count}</span>
                   </div>
                 );
               })}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </CardHeader>
 
-      {/* Reviews List with Filters */}
-      <Card className="border-none shadow-lg">
-        <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Filter className="w-5 h-5 text-gray-600" />
-                <h3 className="font-bold text-lg">Tất Cả Đánh Giá ({filteredAndSortedReviews.length})</h3>
-              </div>
-            </div>
-
-            {/* Search and Filters */}
+        <CardContent className="p-0">
+          {/* Integrated Filters */}
+          <div className="border-b border-slate-100 p-6 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Search */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <Input
                   placeholder="Tìm kiếm đánh giá..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-10 rounded-xl border-slate-100 bg-slate-50/50 focus:bg-white transition-all text-sm"
                 />
               </div>
-
-              {/* Filter by Rating */}
-              <div className="relative">
-                <Star className="absolute left-3 top-1/2 transform -translate-y-1/2 text-yellow-400 w-4 h-4 fill-yellow-400" />
-                <select
-                  value={filterRating}
-                  onChange={(e) => setFilterRating(e.target.value as FilterOption)}
-                  className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white hover:border-blue-400 transition-colors appearance-none cursor-pointer"
-                >
-                  <option value="all">Tất cả đánh giá</option>
-                  <option value="5">⭐⭐⭐⭐⭐ (5 sao)</option>
-                  <option value="4">⭐⭐⭐⭐ (4 sao)</option>
-                  <option value="3">⭐⭐⭐ (3 sao)</option>
-                  <option value="2">⭐⭐ (2 sao)</option>
-                  <option value="1">⭐ (1 sao)</option>
-                </select>
-              </div>
-
-              {/* Sort */}
-              <div className="relative">
-                {sortBy === 'newest' || sortBy === 'oldest' ? (
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                ) : (
-                  <TrendingUp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                )}
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white hover:border-blue-400 transition-colors appearance-none cursor-pointer"
-                >
-                  <option value="newest">🕐 Mới nhất</option>
-                  <option value="oldest">🕐 Cũ nhất</option>
-                  <option value="highest">⭐ Đánh giá cao nhất</option>
-                  <option value="lowest">⭐ Đánh giá thấp nhất</option>
-                </select>
-              </div>
+              <select
+                value={filterRating}
+                onChange={(e) => setFilterRating(e.target.value as FilterOption)}
+                className="w-full px-4 py-2 h-10 border border-slate-100 rounded-xl bg-slate-50/50 hover:bg-white transition-all appearance-none cursor-pointer text-sm font-medium text-slate-600"
+              >
+                <option value="all">Tất cả sao</option>
+                <option value="5">5 sao</option>
+                <option value="4">4 sao</option>
+                <option value="3">3 sao</option>
+                <option value="2">2 sao</option>
+                <option value="1">1 sao</option>
+              </select>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="w-full px-4 py-2 h-10 border border-slate-100 rounded-xl bg-slate-50/50 hover:bg-white transition-all appearance-none cursor-pointer text-sm font-medium text-slate-600"
+              >
+                <option value="newest">Mới nhất</option>
+                <option value="oldest">Cũ nhất</option>
+                <option value="highest">Cao nhất</option>
+                <option value="lowest">Thấp nhất</option>
+              </select>
             </div>
-
-            {/* Active Filters Display */}
-            {(searchQuery || filterRating !== 'all') && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-gray-600">Đang lọc:</span>
-                {searchQuery && (
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium flex items-center gap-2">
-                    Tìm kiếm: "{searchQuery}"
-                    <button onClick={() => setSearchQuery('')} className="hover:text-blue-900">×</button>
-                  </span>
-                )}
-                {filterRating !== 'all' && (
-                  <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium flex items-center gap-2">
-                    {filterRating} sao
-                    <button onClick={() => setFilterRating('all')} className="hover:text-yellow-900">×</button>
-                  </span>
-                )}
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setFilterRating('all');
-                  }}
-                  className="text-sm text-gray-500 hover:text-gray-700 underline"
-                >
-                  Xóa tất cả
-                </button>
-              </div>
-            )}
           </div>
-        </CardHeader>
 
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            {filteredAndSortedReviews.length === 0 ? (
-              <div className="text-center py-12">
-                <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 font-medium mb-2">
-                  {searchQuery || filterRating !== 'all' 
-                    ? 'Không tìm thấy đánh giá phù hợp' 
+          {/* Review List */}
+          <div className="p-8">
+            {paginatedReviews.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="w-8 h-8 text-slate-300" />
+                </div>
+                <p className="text-slate-500 text-sm font-medium mb-6">
+                  {searchQuery || filterRating !== 'all'
+                    ? 'Không tìm thấy đánh giá phù hợp'
                     : 'Chưa có đánh giá nào cho sản phẩm này'}
                 </p>
-                {isAuthenticated && !userHasReviewed && !searchQuery && filterRating === 'all' && (
+                {isLoggedIn && !userHasReviewed && (
                   <Button
                     onClick={() => {
                       setEditingReview(null);
@@ -376,109 +313,86 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
                       setComment('');
                       setShowReviewDialog(true);
                     }}
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 mt-4"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-10 px-6"
                   >
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Viết Đánh Giá Đầu Tiên
+                    <Plus className="w-4 h-4 mr-2" />
+                    Viết Đánh Giá
                   </Button>
                 )}
               </div>
             ) : (
-              paginatedReviews.map((review, index) => (
-                <Card
-                  key={review.id}
-                  className="border-none shadow-md hover:shadow-xl transition-all duration-300 group"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="relative">
-                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:shadow-xl transition-shadow">
-                            {review.userName?.charAt(0).toUpperCase() || <User className="w-7 h-7" />}
-                          </div>
-                          {/* Rating badge on avatar */}
-                          <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
-                            <span className="text-xs font-black text-white">{review.rating}</span>
-                          </div>
+              <div className="divide-y divide-slate-100">
+                {paginatedReviews.map((review) => (
+                  <div key={review.id} className="py-8 first:pt-0 last:pb-0 group">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-indigo-600 font-bold shadow-sm">
+                          {review.userName?.charAt(0).toUpperCase() || <User className="w-5 h-5" />}
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="font-bold text-gray-900 text-lg">
-                              {review.userName || 'Người dùng'}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-slate-900 text-sm">{review.userName || 'Người dùng'}</h4>
+                            <div className="flex items-center gap-0.5 px-2 py-0.5 bg-amber-50 rounded-lg">
+                              <span className="text-[10px] font-black text-amber-600">{review.rating}</span>
+                              <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
                             </div>
                             {user?.id === review.userId && (
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
-                                Bạn
-                              </span>
+                              <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50 border-none px-2 py-0 h-4 text-[10px] font-bold">
+                                BẠN
+                              </Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-3">
-                            {renderStars(review.rating, false, 'sm')}
-                            <span className="text-sm text-gray-400 flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {new Date(review.createdAt).toLocaleDateString('vi-VN', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </span>
-                          </div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                            {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+                          </p>
                         </div>
                       </div>
+
                       {user?.id === review.userId && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant="ghost"
                             onClick={() => handleEditReview(review)}
-                            className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all"
+                            className="h-8 w-8 p-0 rounded-lg hover:bg-indigo-50 hover:text-indigo-600"
                           >
-                            <Edit className="w-4 h-4 mr-1" />
-                            Sửa
+                            <Edit className="w-3.5 h-3.5" />
                           </Button>
                           <Button
                             size="sm"
-                            variant="destructive"
-                            onClick={() => handleDeleteReview(review.id)}
-                            className="hover:shadow-lg transition-all"
+                            variant="ghost"
+                            onClick={() => confirmDelete(review.id)}
+                            className="h-8 w-8 p-0 rounded-lg hover:bg-rose-50 hover:text-rose-600"
                           >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Xóa
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       )}
                     </div>
-                    <div className="pl-[72px]">
-                      <p className="text-gray-700 leading-relaxed text-base">{review.comment}</p>
-                      {review.updatedAt !== review.createdAt && (
-                        <p className="text-xs text-gray-400 mt-2 italic">
-                          Đã chỉnh sửa: {new Date(review.updatedAt).toLocaleDateString('vi-VN')}
-                        </p>
-                      )}
+                    <div className="sm:pl-14">
+                      <p className="text-slate-600 leading-relaxed text-sm whitespace-pre-wrap">{review.comment}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              ))
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Pagination Integrated */}
+            {totalPages > 1 && (
+              <div className="mt-12 pt-8 border-t border-slate-50">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredAndSortedReviews.length}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
             )}
           </div>
-
-          {/* Pagination */}
-          {filteredAndSortedReviews.length > 0 && (
-            <div className="mt-6">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={filteredAndSortedReviews.length}
-                itemsPerPage={ITEMS_PER_PAGE}
-                onPageChange={setCurrentPage}
-              />
-            </div>
-          )}
         </CardContent>
       </Card>
+
 
       {/* Review Dialog - Enhanced */}
       <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
@@ -493,19 +407,19 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
           </DialogHeader>
           <div className="space-y-6">
             {/* Rating Section */}
-            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-xl border-2 border-yellow-200">
-              <Label className="text-lg font-bold mb-3 block">Đánh giá của bạn</Label>
-              <div className="flex items-center gap-4">
+            <div className="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
+              <Label className="text-base font-bold mb-3 block text-slate-900">Đánh giá của bạn</Label>
+              <div className="flex items-center gap-6">
                 {renderStars(rating, true, 'lg')}
                 <div className="flex-1">
-                  <p className="text-2xl font-black bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
-                    {rating === 5 && '🎉 Tuyệt vời!'}
-                    {rating === 4 && '😊 Rất tốt'}
-                    {rating === 3 && '👍 Tốt'}
-                    {rating === 2 && '😐 Tạm được'}
-                    {rating === 1 && '😞 Không hài lòng'}
+                  <p className="text-xl font-bold text-indigo-600">
+                    {rating === 5 && 'Tuyệt vời!'}
+                    {rating === 4 && 'Rất tốt'}
+                    {rating === 3 && 'Tốt'}
+                    {rating === 2 && 'Tạm được'}
+                    {rating === 1 && 'Không hài lòng'}
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-slate-500 mt-0.5">
                     {rating}/5 sao
                   </p>
                 </div>
@@ -564,9 +478,34 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
             <Button
               onClick={handleSubmitReview}
               disabled={comment.trim().length < 10}
-              className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 px-6 font-bold"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 h-11 rounded-xl font-bold shadow-lg shadow-indigo-100 transition-all active:scale-95"
             >
               {editingReview ? '💾 Cập Nhật Đánh Giá' : '📝 Gửi Đánh Giá'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-rose-600">
+              <Trash2 className="w-5 h-5" />
+              Xác nhận xóa đánh giá
+            </DialogTitle>
+            <DialogDescription className="py-4 text-base">
+              Bạn có chắc chắn muốn xóa đánh giá này? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} className="flex-1">
+              Hủy
+            </Button>
+            <Button
+              onClick={handleDeleteReview}
+              className="flex-1 bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              Xác nhận xóa
             </Button>
           </DialogFooter>
         </DialogContent>

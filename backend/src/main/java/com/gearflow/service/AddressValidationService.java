@@ -47,8 +47,8 @@ public class AddressValidationService {
             return ValidationResult.error("Địa chỉ chi tiết không được để trống");
         }
         
-        if (address.getAddress().length() < 5) {
-            return ValidationResult.error("Địa chỉ chi tiết quá ngắn (tối thiểu 5 ký tự)");
+        if (address.getAddress().length() < 2) {
+            return ValidationResult.error("Địa chỉ chi tiết quá ngắn (tối thiểu 2 ký tự)");
         }
         
         if (address.getWard() == null || address.getWard().trim().isEmpty()) {
@@ -82,7 +82,7 @@ public class AddressValidationService {
         
         // Address should contain basic location info
         long wordCount = address.split("\\s+").length;
-        return wordCount >= 2 && address.length() >= 5 && address.length() <= 500;
+        return wordCount >= 1 && address.length() >= 2 && address.length() <= 500;
     }
     
     /**

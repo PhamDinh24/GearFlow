@@ -27,4 +27,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     @Query("SELECT o FROM Order o LEFT JOIN FETCH o.items WHERE o.userId = :userId")
     List<Order> findAllByUserId(@Param("userId") String userId);
+
+    @Query("SELECT COUNT(o) > 0 FROM Order o JOIN o.items i WHERE o.userId = :userId AND i.productId = :productId AND o.status = :status")
+    boolean hasUserPurchasedProductAndReceived(@Param("userId") String userId, @Param("productId") String productId, @Param("status") Order.OrderStatus status);
 }

@@ -13,6 +13,9 @@ import com.gearflow.repository.OrderRepository;
 import com.gearflow.repository.ProductRepository;
 import com.gearflow.repository.ProductVariantRepository;
 import com.gearflow.repository.UserRepository;
+import com.gearflow.repository.ShippingAddressRepository;
+import com.gearflow.repository.PaymentRepository;
+import com.gearflow.entity.ShippingAddress;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -21,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,9 @@ public class OrderService {
     private final ProductVariantRepository variantRepository;
     private final CartService cartService;
     private final ProductService productService;
+    private final ShippingAddressRepository addressRepository;
+    private final PaymentRepository paymentRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public OrderDTO createOrder(String userId, OrderRequest request) {
@@ -46,11 +53,35 @@ public class OrderService {
             throw new BusinessException("Cart is empty");
         }
 
-        // Validate shipping info
-        if (request.getShippingAddress() == null || request.getShippingAddress().trim().isEmpty()) {
+        // Handle shipping info
+        String fullName = request.getShippingFullName();
+        String phone = request.getShippingPhone();
+        String email = request.getShippingEmail();
+        String addressLine = request.getShippingAddress();
+        String ward = request.getShippingWard();
+        String district = request.getShippingDistrict();
+        String city = request.getShippingCity();
+        String postalCode = request.getShippingPostalCode();
+
+        // If addressId is provided, override with data from repository
+        if (request.getAddressId() != null && !request.getAddressId().trim().isEmpty()) {
+            ShippingAddress savedAddress = addressRepository.findByIdAndUserId(request.getAddressId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Shipping address not found: " + request.getAddressId()));
+            fullName = savedAddress.getFullName();
+            phone = savedAddress.getPhone();
+            email = savedAddress.getEmail();
+            addressLine = savedAddress.getAddress();
+            ward = savedAddress.getWard();
+            district = savedAddress.getDistrict();
+            city = savedAddress.getCity();
+            postalCode = savedAddress.getPostalCode();
+        }
+
+        // Validate basic shipping info
+        if (addressLine == null || addressLine.trim().isEmpty()) {
             throw new BusinessException("Shipping address is required");
         }
-        if (request.getShippingPhone() == null || request.getShippingPhone().trim().isEmpty()) {
+        if (phone == null || phone.trim().isEmpty()) {
             throw new BusinessException("Shipping phone is required");
         }
 
@@ -59,15 +90,35 @@ public class OrderService {
                 .id(java.util.UUID.randomUUID().toString())
                 .userId(user.getId())
                 .status(Order.OrderStatus.PENDING)
-                .totalAmount(cartDTO.getTotalPrice())
-                .shippingAddress(request.getShippingAddress())
-                .shippingCity(request.getShippingCity())
-                .shippingPostalCode(request.getShippingPostalCode())
-                .shippingPhone(request.getShippingPhone())
+                .shippingFullName(fullName)
+                .shippingEmail(email)
+                .shippingPhone(phone)
+                .shippingAddress(addressLine)
+                .shippingWard(ward)
+                .shippingDistrict(district)
+                .shippingCity(city)
+                .shippingPostalCode(postalCode)
                 .build();
 
+        // Filter cart items if variantIds provided
+        var itemsToOrder = cartDTO.getItems();
+        if (request.getVariantIds() != null && !request.getVariantIds().isEmpty()) {
+            itemsToOrder = itemsToOrder.stream()
+                    .filter(i -> request.getVariantIds().contains(i.getVariantId()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        if (itemsToOrder.isEmpty()) {
+            throw new BusinessException("No items to order");
+        }
+
+        java.math.BigDecimal totalAmount = itemsToOrder.stream()
+                .map(i -> i.getPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity())))
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        order.setTotalAmount(totalAmount);
+
         // Add items
-        for (var cartItem : cartDTO.getItems()) {
+        for (var cartItem : itemsToOrder) {
             variantRepository.findById(cartItem.getVariantId())
                     .orElseThrow(() -> new ResourceNotFoundException("Variant not found"));
 
@@ -88,10 +139,23 @@ public class OrderService {
         }
 
         order = orderRepository.save(order);
-        cartService.clearCart(userId);
+        
+        // Remove only ordered items from cart
+        for (var cartItem : itemsToOrder) {
+            cartService.removeItem(userId, cartItem.getVariantId());
+        }
+
+        // Notify Admins about new order
+        notifyAdmins("Đơn hàng mới", "Có một đơn hàng mới #" + order.getId().substring(0, 8) + " vừa được tạo.");
 
         log.info("Order created with ID: {}", order.getId());
         return toDTO(order);
+    }
+
+    private void notifyAdmins(String title, String message) {
+        userRepository.findByRole(User.UserRole.ADMIN).forEach(admin -> {
+            notificationService.createNotification(admin.getId(), "SYSTEM", title, message);
+        });
     }
 
     public OrderDTO getOrder(String orderId) {
@@ -116,8 +180,29 @@ public class OrderService {
         // Validate status transition
         validateStatusTransition(order.getStatus(), newStatus);
 
+        // If transitioning to CANCELLED or RETURNED, restore stock
+        if (newStatus == Order.OrderStatus.CANCELLED || newStatus == Order.OrderStatus.RETURNED) {
+            handleStockRestoration(order);
+        }
+        
+        // If transitioning from PENDING to CONFIRMED, commit the stock
+        if (order.getStatus() == Order.OrderStatus.PENDING && newStatus == Order.OrderStatus.CONFIRMED) {
+            commitStock(order);
+        }
+
         order.setStatus(newStatus);
         order = orderRepository.save(order);
+
+        // Notify user about status change
+        String statusMessage = getStatusMessage(newStatus);
+        notificationService.createNotification(order.getUserId(), "ORDER", "Cập nhật đơn hàng", 
+            "Đơn hàng #" + order.getId().substring(0, 8) + " " + statusMessage);
+
+        // Notify admins if delivered or cancelled
+        if (newStatus == Order.OrderStatus.DELIVERED || newStatus == Order.OrderStatus.CANCELLED) {
+            String adminMsg = newStatus == Order.OrderStatus.DELIVERED ? "đã được giao thành công" : "đã bị hủy";
+            notifyAdmins("Cập nhật đơn hàng", "Đơn hàng #" + order.getId().substring(0, 8) + " " + adminMsg);
+        }
 
         log.info("Order status updated successfully");
         return toDTO(order);
@@ -141,17 +226,77 @@ public class OrderService {
             throw new BusinessException("Cannot cancel order in " + order.getStatus() + " status");
         }
 
-        // Restore stock for each item when order is cancelled
-        for (var item : order.getItems()) {
-            if (item.getVariantId() != null) {
-                productService.incrementStock(item.getVariantId(), item.getQuantity());
-            }
-        }
+        // Restore stock
+        handleStockRestoration(order);
 
         order.setStatus(Order.OrderStatus.CANCELLED);
         order = orderRepository.save(order);
 
+        // Notify user
+        notificationService.createNotification(order.getUserId(), "ORDER", "Đơn hàng đã hủy", 
+            "Đơn hàng #" + order.getId().substring(0, 8) + " đã được hủy theo yêu cầu của bạn.");
+
+        // Notify admins
+        notifyAdmins("Đơn hàng đã hủy", "Người dùng đã hủy đơn hàng #" + order.getId().substring(0, 8));
+
         log.info("Order cancelled successfully");
+        return toDTO(order);
+    }
+
+    @Transactional
+    public OrderDTO confirmDelivery(String orderId, String userId) {
+        log.info("User {} confirming delivery for order {}", userId, orderId);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException("You can only confirm delivery for your own orders");
+        }
+
+        if (order.getStatus() != Order.OrderStatus.SHIPPED) {
+            throw new BusinessException("Only shipped orders can be confirmed as delivered");
+        }
+
+        order.setStatus(Order.OrderStatus.DELIVERED);
+        order = orderRepository.save(order);
+
+        // Notify user
+        notificationService.createNotification(order.getUserId(), "ORDER", "Xác nhận đã nhận hàng", 
+            "Cảm ơn bạn đã xác nhận nhận hàng cho đơn hàng #" + order.getId().substring(0, 8) + ". Chúc bạn hài lòng với sản phẩm!");
+
+        // Notify admins
+        notifyAdmins("Xác nhận giao hàng", "Người dùng đã xác nhận nhận hàng cho đơn hàng #" + order.getId().substring(0, 8));
+
+        log.info("Order delivery confirmed successfully");
+        return toDTO(order);
+    }
+
+    @Transactional
+    public OrderDTO requestReturn(String orderId, String userId) {
+        log.info("User {} requesting return for order {}", userId, orderId);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException("You can only return your own orders");
+        }
+
+        if (order.getStatus() != Order.OrderStatus.DELIVERED) {
+            throw new BusinessException("Only delivered orders can be returned");
+        }
+
+        if (order.getUpdatedAt().plusDays(3).isBefore(LocalDateTime.now())) {
+            throw new BusinessException("Return request must be made within 3 days of delivery");
+        }
+
+        order.setStatus(Order.OrderStatus.RETURN_REQUESTED);
+        order = orderRepository.save(order);
+
+        notificationService.createNotification(order.getUserId(), "ORDER", "Yêu cầu trả hàng", 
+            "Yêu cầu trả hàng cho đơn #" + order.getId().substring(0, 8) + " đã được gửi và đang chờ duyệt.");
+
+        notifyAdmins("Yêu cầu trả hàng mới", "Khách hàng đã yêu cầu trả hàng cho đơn #" + order.getId().substring(0, 8));
+
         return toDTO(order);
     }
 
@@ -178,17 +323,7 @@ public class OrderService {
         }
 
         // Restore stock
-        if (order.getItems() != null) {
-            for (var item : order.getItems()) {
-                if (item.getVariantId() != null) {
-                    try {
-                        productService.incrementStock(item.getVariantId(), item.getQuantity());
-                    } catch (Exception e) {
-                        log.error("Error restoring stock", e);
-                    }
-                }
-            }
-        }
+        handleStockRestoration(order);
 
         order.setStatus(Order.OrderStatus.CANCELLED);
         order.setUpdatedAt(java.time.LocalDateTime.now());
@@ -197,34 +332,99 @@ public class OrderService {
         return toDTO(order);
     }
 
+    private void commitStock(Order order) {
+        if (order.getItems() == null) return;
+        
+        for (var item : order.getItems()) {
+            if (item.getVariantId() != null) {
+                try {
+                    // Commit reserved stock (decrease actual stock)
+                    productService.commitReservedStock(item.getVariantId(), item.getQuantity());
+                    log.info("Committed stock for variant: {} qty: {}", item.getVariantId(), item.getQuantity());
+                } catch (Exception e) {
+                    log.error("Error committing stock for variant: {}", item.getVariantId(), e);
+                    throw new BusinessException("Failed to commit stock for variant: " + item.getVariantId());
+                }
+            }
+        }
+    }
+
+    private void handleStockRestoration(Order order) {
+        if (order.getItems() == null) return;
+        
+        for (var item : order.getItems()) {
+            if (item.getVariantId() != null) {
+                try {
+                    if (order.getStatus() == Order.OrderStatus.PENDING) {
+                        // For PENDING orders, stock was only reserved
+                        productService.releaseReservedStock(item.getVariantId(), item.getQuantity());
+                        log.info("Released reserved stock for variant: {} qty: {}", item.getVariantId(), item.getQuantity());
+                    } else if (order.getStatus() != Order.OrderStatus.CANCELLED) {
+                        // For orders beyond PENDING (CONFIRMED, PROCESSING, etc.), stock was already decremented
+                        productService.incrementStock(item.getVariantId(), item.getQuantity());
+                        log.info("Incremented stock for variant: {} qty: {}", item.getVariantId(), item.getQuantity());
+                    }
+                } catch (Exception e) {
+                    log.error("Error restoring stock for variant: {}", item.getVariantId(), e);
+                }
+            }
+        }
+    }
+    
+    private String getStatusMessage(Order.OrderStatus status) {
+        switch (status) {
+            case PENDING: return "đang chờ xử lý";
+            case CONFIRMED: return "đã được xác nhận";
+            case PROCESSING: return "đang được chuẩn bị";
+            case SHIPPED: return "đang được giao đến bạn";
+            case DELIVERED: return "đã được giao thành công";
+            case CANCELLED: return "đã bị hủy";
+            case RETURN_REQUESTED: return "đã yêu cầu trả hàng";
+            case RETURNED: return "đã được hoàn trả";
+            case RETURN_REJECTED: return "yêu cầu trả hàng bị từ chối";
+            default: return "đã được cập nhật";
+        }
+    }
+
     private void validateStatusTransition(Order.OrderStatus currentStatus, Order.OrderStatus newStatus) {
-        if (currentStatus == Order.OrderStatus.DELIVERED || currentStatus == Order.OrderStatus.CANCELLED) {
+        // Allow DELIVERED to RETURN_REQUESTED
+        if (currentStatus == Order.OrderStatus.DELIVERED && newStatus == Order.OrderStatus.RETURN_REQUESTED) {
+            return;
+        }
+        
+        // Allow RETURN_REQUESTED to RETURNED or RETURN_REJECTED
+        if (currentStatus == Order.OrderStatus.RETURN_REQUESTED && 
+            (newStatus == Order.OrderStatus.RETURNED || newStatus == Order.OrderStatus.RETURN_REJECTED)) {
+            return;
+        }
+
+        // Cannot change status of completed orders
+        if (currentStatus == Order.OrderStatus.DELIVERED || currentStatus == Order.OrderStatus.CANCELLED || currentStatus == Order.OrderStatus.RETURNED || currentStatus == Order.OrderStatus.RETURN_REJECTED) {
             throw new BusinessException("Cannot change status of completed order");
         }
         
-        switch(currentStatus) {
+        // Validate logical flow
+        switch (currentStatus) {
             case PENDING:
                 if (newStatus != Order.OrderStatus.CONFIRMED && newStatus != Order.OrderStatus.CANCELLED) {
-                    throw new BusinessException("From PENDING, can only go to CONFIRMED or CANCELLED");
+                    throw new BusinessException("PENDING order can only transition to CONFIRMED or CANCELLED");
                 }
                 break;
             case CONFIRMED:
                 if (newStatus != Order.OrderStatus.PROCESSING && newStatus != Order.OrderStatus.CANCELLED) {
-                    throw new BusinessException("From CONFIRMED, can only go to PROCESSING or CANCELLED");
+                    throw new BusinessException("CONFIRMED order can only transition to PROCESSING or CANCELLED");
                 }
                 break;
             case PROCESSING:
                 if (newStatus != Order.OrderStatus.SHIPPED && newStatus != Order.OrderStatus.CANCELLED) {
-                    throw new BusinessException("From PROCESSING, can only go to SHIPPED or CANCELLED");
+                    throw new BusinessException("PROCESSING order can only transition to SHIPPED or CANCELLED");
                 }
                 break;
             case SHIPPED:
                 if (newStatus != Order.OrderStatus.DELIVERED) {
-                    throw new BusinessException("From SHIPPED, can only go to DELIVERED");
+                    throw new BusinessException("SHIPPED order can only transition to DELIVERED");
                 }
                 break;
-            default:
-                throw new BusinessException("Unknown order status: " + currentStatus);
         }
     }
 
@@ -233,11 +433,16 @@ public class OrderService {
                 .id(order.getId())
                 .userId(order.getUserId())
                 .status(order.getStatus().toString())
+                .paymentMethod(paymentRepository.findByOrderId(order.getId()).map(p -> p.getPaymentMethod().name()).orElse("COD"))
                 .totalAmount(order.getTotalAmount())
+                .shippingFullName(order.getShippingFullName())
+                .shippingEmail(order.getShippingEmail())
+                .shippingPhone(order.getShippingPhone())
                 .shippingAddress(order.getShippingAddress())
+                .shippingWard(order.getShippingWard())
+                .shippingDistrict(order.getShippingDistrict())
                 .shippingCity(order.getShippingCity())
                 .shippingPostalCode(order.getShippingPostalCode())
-                .shippingPhone(order.getShippingPhone())
                 .items(order.getItems() != null ? order.getItems().stream()
                         .map(item -> OrderItemDTO.builder()
                                 .id(item.getId())
@@ -245,6 +450,7 @@ public class OrderService {
                                 .productId(item.getProductId())
                                 .variantId(item.getVariantId())
                                 .productName(productRepository.findById(item.getProductId()).map(com.gearflow.entity.Product::getName).orElse(null))
+                                .imageUrl(productRepository.findById(item.getProductId()).map(com.gearflow.entity.Product::getImageUrl).orElse(null))
                                 .quantity(item.getQuantity())
                                 .price(item.getPrice())
                                 .subtotal(item.getPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())))

@@ -1,7 +1,4 @@
 import React from 'react';
-import { Navigate } from 'react-router';
-import { Header } from './Header';
-import { useAuth } from '../../context/AuthContext';
 import { motion } from "framer-motion";
 
 interface AdminPageWrapperProps {
@@ -9,19 +6,23 @@ interface AdminPageWrapperProps {
   title?: string;
   description?: string;
   actions?: React.ReactNode;
+  helpTitle?: string;
+  helpContent?: string;
 }
 
-export function AdminPageWrapper({ children, title, description, actions }: AdminPageWrapperProps) {
-  const { isAuthenticated, user } = useAuth();
+import { HelpTooltip } from '../common/HelpTooltip';
 
-  if (!isAuthenticated || user?.role !== 'ADMIN') {
-    return <Navigate to="/login" replace />;
-  }
-
+export function AdminPageWrapper({ 
+  children, 
+  title, 
+  description, 
+  actions,
+  helpTitle,
+  helpContent 
+}: AdminPageWrapperProps) {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Header />
-      <div className="max-w-[1600px] mx-auto px-6 py-10">
+    <div className="bg-white min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -29,19 +30,24 @@ export function AdminPageWrapper({ children, title, description, actions }: Admi
         >
           {/* Page Header */}
           {(title || description || actions) && (
-            <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between group">
+            <div className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 {title && (
-                  <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase mb-2">
-                    {title}
-                  </h1>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h1 className="text-4xl font-bold text-slate-900">
+                      {title}
+                    </h1>
+                    {helpContent && (
+                      <HelpTooltip title={helpTitle || title} content={helpContent} />
+                    )}
+                  </div>
                 )}
                 {description && (
-                  <p className="text-slate-500 font-medium max-w-2xl">{description}</p>
+                  <p className="text-slate-600 text-lg max-w-2xl">{description}</p>
                 )}
               </div>
               {actions && (
-                <div className="flex flex-wrap gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                <div className="flex flex-wrap gap-3">
                   {actions}
                 </div>
               )}

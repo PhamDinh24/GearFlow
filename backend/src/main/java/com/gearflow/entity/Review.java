@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -16,14 +19,17 @@ import java.time.LocalDateTime;
 @Table(name = "reviews", indexes = {
     @Index(name = "idx_reviews_user", columnList = "user_id"),
     @Index(name = "idx_reviews_product", columnList = "product_id"),
+    @Index(name = "idx_reviews_order_item", columnList = "order_item_id"),
     @Index(name = "idx_reviews_created_at", columnList = "created_at")
 }, uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"user_id", "product_id"})
+    @UniqueConstraint(columnNames = {"user_id", "order_item_id"})
 })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SQLDelete(sql = "UPDATE reviews SET is_deleted = true WHERE review_id = ?")
+@Where(clause = "is_deleted = false")
 public class Review {
 
     @Id
@@ -35,6 +41,9 @@ public class Review {
 
     @Column(name = "product_id", nullable = false, length = 36)
     private String productId;
+
+    @Column(name = "order_item_id", length = 36)
+    private String orderItemId;
 
     @Column(name = "rating")
     @Min(1)
@@ -51,4 +60,8 @@ public class Review {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 }

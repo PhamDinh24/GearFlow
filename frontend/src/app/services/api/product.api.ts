@@ -104,6 +104,39 @@ class ProductApiService extends BaseApiService {
       throw new Error(`Failed to delete product image: ${response.status}`);
     }
   }
+
+  async getLatestProducts(limit = 6): Promise<ProductDTO[]> {
+    const response = await this.fetchWithTimeout(
+      this.buildUrl('/products/latest', { limit }),
+      {
+        method: 'GET',
+        headers: this.getHeaders(false),
+      }
+    );
+    return this.handleResponse<ProductDTO[]>(response);
+  }
+
+  async getFeaturedProducts(limit = 6): Promise<ProductDTO[]> {
+    const response = await this.fetchWithTimeout(
+      this.buildUrl('/products/featured', { limit }),
+      {
+        method: 'GET',
+        headers: this.getHeaders(false),
+      }
+    );
+    return this.handleResponse<ProductDTO[]>(response);
+  }
+
+  async getPublicStats(): Promise<{ totalProducts: number; totalUsers: number }> {
+    const response = await this.fetchWithTimeout(
+      this.buildUrl('/products/public/stats'),
+      {
+        method: 'GET',
+        headers: this.getHeaders(false),
+      }
+    );
+    return this.handleResponse<{ totalProducts: number; totalUsers: number }>(response);
+  }
 }
 
 export const productApi = new ProductApiService();

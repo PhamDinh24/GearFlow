@@ -55,4 +55,22 @@ public class OrderController {
         OrderDTO order = orderService.cancelOrder(orderId, user.getId());
         return ResponseEntity.ok(order);
     }
+
+    @PostMapping("/orders/{orderId}/confirm-delivery")
+    public ResponseEntity<OrderDTO> confirmDelivery(
+            @PathVariable String orderId,
+            @AuthenticationPrincipal UserPrincipal user) {
+        log.info("POST /api/orders/{}/confirm-delivery - User: {}", orderId, user.getId());
+        OrderDTO order = orderService.confirmDelivery(orderId, user.getId());
+        return ResponseEntity.ok(order);
+    }
+
+    @PostMapping("/orders/{orderId}/return")
+    public ResponseEntity<OrderDTO> requestReturn(
+            @PathVariable String orderId,
+            @AuthenticationPrincipal UserPrincipal user) {
+        log.info("POST /api/orders/{}/return - User: {}", orderId, user.getId());
+        OrderDTO order = orderService.requestReturn(orderId, user.getId());
+        return ResponseEntity.ok(order);
+    }
 }

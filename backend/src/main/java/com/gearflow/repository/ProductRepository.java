@@ -43,26 +43,30 @@ public interface ProductRepository extends JpaRepository<Product, String> {
            "(:categoryId IS NULL OR p.categoryId = :categoryId) AND " +
            "(:brandId IS NULL OR p.brandId = :brandId) AND " +
            "(:minPrice IS NULL OR p.basePrice >= :minPrice) AND " +
-           "(:maxPrice IS NULL OR p.basePrice <= :maxPrice)")
+           "(:maxPrice IS NULL OR p.basePrice <= :maxPrice) AND " +
+           "(:layout IS NULL OR p.layout = :layout) AND " +
+           "(:connectionType IS NULL OR p.connectionType = :connectionType) AND " +
+           "(p.active = true)")
     Page<Product> findByFilters(
         @Param("categoryId") String categoryId,
         @Param("brandId") String brandId,
         @Param("minPrice") BigDecimal minPrice,
         @Param("maxPrice") BigDecimal maxPrice,
+        @Param("layout") String layout,
+        @Param("connectionType") String connectionType,
         Pageable pageable
     );
     
     // For recommendations
-    @Query("SELECT p FROM Product p ORDER BY p.createdAt DESC")
+    @Query("SELECT p FROM Product p WHERE p.active = true ORDER BY p.createdAt DESC")
     List<Product> findLatestProducts(Pageable pageable);
     
-    @Query("SELECT p FROM Product p WHERE p.id IN " +
-           "(SELECT oi.productId FROM OrderItem oi " +
-           "GROUP BY oi.productId ORDER BY SUM(oi.quantity) DESC)")
-    List<Product> findBestSellingProducts(Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.active = true " +
+           "ORDER BY (SELECT COUNT(w.productId) FROM Wishlist w WHERE w.productId = p.id) DESC")
+    List<Product> findMostWishlistedProducts(Pageable pageable);
     
     // Time range queries
-    @Query("SELECT p FROM Product p WHERE p.createdAt BETWEEN :startDate AND :endDate")
+    @Query("SELECT p FROM Product p WHERE p.active = true AND p.createdAt BETWEEN :startDate AND :endDate")
     List<Product> findProductsByDateRange(@Param("startDate") java.time.LocalDateTime startDate, 
                                           @Param("endDate") java.time.LocalDateTime endDate, 
                                           Pageable pageable);

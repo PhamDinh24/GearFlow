@@ -1,13 +1,23 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
-import { motion } from "framer-motion";
+import { Link, useNavigate } from "react-router";
 import { orderApi, reviewApi } from "../../services/api";
 import { OrderDTO } from "../../types";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardHeader } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Pagination } from "../ui/pagination";
-import { Package, Eye, ChevronRight, ShoppingBag, Calendar, CreditCard, Star, MessageSquare } from "lucide-react";
+import { CustomPagination } from "../ui/custom-pagination";
+import { 
+  Package, 
+  ShoppingBag, 
+  Calendar, 
+  CreditCard, 
+  Star, 
+  Truck,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Box
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 
@@ -15,6 +25,7 @@ const ITEMS_PER_PAGE = 12;
 
 export function OrderHistory() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewCounts, setReviewCounts] = useState<Record<string, { reviewed: number; total: number }>>({});
@@ -26,16 +37,13 @@ export function OrderHistory() {
 
   const loadOrders = async () => {
     try {
+      setLoading(true);
       const data = await orderApi.getOrders();
-      
-      // Sort orders by createdAt (newest first)
       const sortedOrders = data.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-      
       setOrders(sortedOrders);
       
-      // Load review counts for delivered orders
       const counts: Record<string, { reviewed: number; total: number }> = {};
       for (const order of sortedOrders) {
         if (order.status === 'DELIVERED' && order.items) {
@@ -45,14 +53,9 @@ export function OrderHistory() {
               const productReviews = await reviewApi.getProductReviews(item.productId);
               const userReview = productReviews.find(r => r.userId === user?.id);
               if (userReview) reviewedCount++;
-            } catch (error) {
-              // Ignore errors
-            }
+            } catch (error) {}
           }
-          counts[order.id] = {
-            reviewed: reviewedCount,
-            total: order.items.length
-          };
+          counts[order.id] = { reviewed: reviewedCount, total: order.items.length };
         }
       }
       setReviewCounts(counts);
@@ -64,145 +67,137 @@ export function OrderHistory() {
     }
   };
 
-  const statusMap: Record<string, { label: string, color: string, bg: string }> = {
-    PENDING: { label: 'Chờ xử lý', color: 'text-amber-600', bg: 'bg-amber-50' },
-    PROCESSING: { label: 'Đang xử lý', color: 'text-blue-600', bg: 'bg-blue-50' },
-    SHIPPED: { label: 'Đang giao', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    DELIVERED: { label: 'Hoàn thành', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    CANCELLED: { label: 'Đã hủy', color: 'text-red-600', bg: 'bg-red-50' },
+  const statusMap: Record<string, { label: string, color: string, bg: string, icon: any }> = {
+    PENDING: { label: 'Chờ xác nhận', color: 'text-amber-700', bg: 'bg-amber-100', icon: Clock },
+    PROCESSING: { label: 'Đang xử lý', color: 'text-blue-700', bg: 'bg-blue-100', icon: Package },
+    SHIPPED: { label: 'Đang giao', color: 'text-indigo-700', bg: 'bg-indigo-100', icon: Truck },
+    DELIVERED: { label: 'Hoàn thành', color: 'text-emerald-700', bg: 'bg-emerald-100', icon: CheckCircle },
+    CANCELLED: { label: 'Đã hủy', color: 'text-rose-700', bg: 'bg-rose-100', icon: XCircle },
+    RETURN_REQUESTED: { label: 'Yêu cầu trả hàng', color: 'text-orange-700', bg: 'bg-orange-100', icon: Package },
+    RETURNED: { label: 'Đã trả hàng', color: 'text-gray-700', bg: 'bg-gray-100', icon: CheckCircle },
+    RETURN_REJECTED: { label: 'Từ chối trả hàng', color: 'text-red-700', bg: 'bg-red-100', icon: XCircle },
   };
 
-  // Pagination
   const totalPages = Math.ceil(orders.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedOrders = orders.slice(startIndex, endIndex);
+  const paginatedOrders = orders.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-gray-500 mt-4">Đang tải lịch sử đơn hàng...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Header Banner */}
-      <section className="bg-slate-950 text-white py-16 relative overflow-hidden mb-12">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-indigo-600/10 z-0" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-4 uppercase">LỊCH SỬ ĐƠN HÀNG</h1>
-            <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">
-              Quản lý và theo dõi hành trình trải nghiệm các bộ phím cơ của bạn.
-            </p>
-          </motion.div>
-        </div>
-      </section>
-
+    <div className="bg-gray-50 min-h-screen py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Lịch sử đơn hàng</h1>
+            <p className="text-gray-500 mt-2">
+              Theo dõi và quản lý các đơn hàng bạn đã đặt
+            </p>
+          </div>
+          <div className="bg-white px-6 py-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{orders.length}</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wider">Đơn hàng</div>
+            </div>
+          </div>
+        </div>
+
         {orders.length === 0 ? (
-          <Card className="text-center py-24 border-none rounded-[3rem] shadow-xl shadow-slate-200">
+          <Card className="text-center py-16">
             <CardContent>
-              <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Package className="w-12 h-12 text-slate-200" />
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Box className="w-8 h-8 text-gray-400" />
               </div>
-              <h2 className="text-3xl font-bold text-slate-900 mb-4">Chưa có đơn hàng nào</h2>
-              <p className="text-slate-500 mb-8 max-w-md mx-auto">Hãy bắt đầu hành trình xây dựng góc làm việc mơ ước với GearFlow ngay hôm nay.</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Chưa có đơn hàng nào</h3>
+              <p className="text-gray-500 mb-6">
+                Bạn chưa thực hiện bất kỳ giao dịch nào. Hãy bắt đầu mua sắm ngay!
+              </p>
               <Link to="/shop">
-                <Button size="lg" className="bg-slate-900 hover:bg-blue-600 text-white rounded-xl px-10 h-14 font-bold transition-all shadow-lg shadow-slate-200">
-                  Khám phá sản phẩm
+                <Button>
+                  <ShoppingBag className="w-4 h-4 mr-2" /> Tiếp tục mua sắm
                 </Button>
               </Link>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-6">
-            {paginatedOrders.map((order, index) => {
+            {paginatedOrders.map((order) => {
               const status = statusMap[order.status] || statusMap.PENDING;
               return (
-                <motion.div
-                  key={order.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                >
-                  <Card className="border-none rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 bg-white overflow-hidden group">
-                    <CardHeader className="p-8 pb-4">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 transition-colors">
-                            <ShoppingBag className="w-7 h-7 text-slate-400 group-hover:text-blue-600" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-xl font-black uppercase tracking-tighter text-slate-900">
-                              Đơn hàng #{order.id.substring(0, 8)}
-                            </CardTitle>
-                            <div className="flex items-center gap-3 mt-1 text-sm text-slate-400 font-medium">
-                              <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
-                              <span className="flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5" /> {order.paymentMethod || 'COD'}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className={`px-4 py-1.5 rounded-full ${status.bg} ${status.color} text-xs font-black uppercase tracking-widest border border-current opacity-70`}>
+                <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow border border-gray-200">
+                  <CardHeader className="bg-white border-b border-gray-100 pb-4 pt-4 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-3">
+                        <span className="font-semibold text-gray-900 text-lg">Đơn hàng #{order.id.substring(0, 8)}</span>
+                        <Badge variant="outline" className={`${status.bg} ${status.color} border-transparent font-medium`}>
                           {status.label}
-                        </div>
+                        </Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent className="px-8 pb-8">
-                      <div className="flex flex-col md:flex-row items-end md:items-center justify-between pt-6 border-t border-slate-50 gap-6">
-                        <div className="flex -space-x-4">
-                          {order.items?.slice(0, 3).map((item, idx) => (
-                            <div key={idx} className="w-12 h-12 rounded-xl border-4 border-white overflow-hidden shadow-sm bg-slate-100">
-                              <img src={item.imageUrl || ''} alt="" className="w-full h-full object-cover" />
-                            </div>
-                          ))}
-                          {order.items && order.items.length > 3 && (
-                            <div className="w-12 h-12 rounded-xl border-4 border-white bg-slate-200 flex items-center justify-center text-[10px] font-black text-slate-600 shadow-sm">
-                              +{order.items.length - 3}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-6">
-                           {/* Review Status for Delivered Orders */}
-                           {order.status === 'DELIVERED' && reviewCounts[order.id] && (
-                             <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-full border border-yellow-200">
-                               <Star className="w-4 h-4 text-yellow-600 fill-yellow-400" />
-                               <span className="text-xs font-bold text-yellow-700">
-                                 {reviewCounts[order.id].reviewed}/{reviewCounts[order.id].total} đã đánh giá
-                               </span>
-                             </div>
-                           )}
-                           
-                           <div className="text-right">
-                              <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-0.5">Tổng thanh toán</p>
-                              <p className="text-2xl font-black text-blue-600 tracking-tighter">
-                                {order.totalAmount?.toLocaleString('vi-VN')}đ
-                              </p>
-                           </div>
-                           <Link to={`/orders/${order.id}`}>
-                              <Button variant="ghost" className="w-12 h-12 rounded-2xl bg-slate-50 hover:bg-slate-900 hover:text-white transition-all">
-                                <ChevronRight className="w-5 h-5" />
-                              </Button>
-                           </Link>
-                        </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
+                        <span className="flex items-center gap-1.5"><CreditCard className="w-4 h-4" /> {order.paymentMethod || 'COD'}</span>
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <p className="text-sm text-gray-500 mb-1">Tổng tiền</p>
+                      <p className="font-bold text-xl text-indigo-600">
+                        {order.totalAmount?.toLocaleString('vi-VN')}đ
+                      </p>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="p-0">
+                    <div className="divide-y divide-gray-100">
+                      {order.items?.map((item, idx) => (
+                        <div key={idx} className="flex items-center p-6 gap-6 bg-white">
+                          <div className="w-20 h-20 bg-gray-50 rounded-lg overflow-hidden border border-gray-100 flex-shrink-0">
+                            <img src={item.imageUrl || ''} alt={item.productName} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-gray-900 truncate mb-1">{item.productName}</h4>
+                            <div className="text-sm text-gray-500">
+                              Số lượng: {item.quantity} × {item.price?.toLocaleString('vi-VN')}đ
+                            </div>
+                          </div>
+                          <div className="text-right font-medium text-gray-900">
+                            {((item.price || 0) * (item.quantity || 1)).toLocaleString('vi-VN')}đ
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="bg-gray-50 border-t border-gray-100 p-4 px-6 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {order.status === 'DELIVERED' && reviewCounts[order.id] && (
+                          <div className="flex items-center gap-2 text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg">
+                            <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
+                            Đánh giá: {reviewCounts[order.id].reviewed}/{reviewCounts[order.id].total} sản phẩm
+                          </div>
+                        )}
+                      </div>
+                      <Link to={`/orders/${order.id}`}>
+                        <Button variant="outline" size="sm" className="bg-white font-medium hover:bg-gray-50">
+                          Xem chi tiết đơn hàng
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
               );
             })}
 
-            {/* Pagination */}
-            {orders.length > 0 && (
-              <div className="mt-8">
-                <Pagination
+            {totalPages > 1 && (
+              <div className="pt-8 pb-4 flex justify-center">
+                <CustomPagination
                   currentPage={currentPage}
                   totalPages={totalPages}
                   totalItems={orders.length}
@@ -217,3 +212,4 @@ export function OrderHistory() {
     </div>
   );
 }
+

@@ -31,6 +31,18 @@ public class ProductController {
         return ResponseEntity.ok(productService.getAllProducts(pageable));
     }
 
+    @GetMapping("/latest")
+    public ResponseEntity<List<ProductDTO>> getLatestProducts(
+            @RequestParam(defaultValue = "6") Integer limit) {
+        return ResponseEntity.ok(productService.getLatestProducts(limit));
+    }
+
+    @GetMapping("/featured")
+    public ResponseEntity<List<ProductDTO>> getFeaturedProducts(
+            @RequestParam(defaultValue = "6") Integer limit) {
+        return ResponseEntity.ok(productService.getBestSellingProducts(limit));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ProductDTO> getProductById(@PathVariable String id) {
         return ResponseEntity.ok(productService.getProductById(id));
@@ -50,10 +62,12 @@ public class ProductController {
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) java.math.BigDecimal minPrice,
             @RequestParam(required = false) java.math.BigDecimal maxPrice,
+            @RequestParam(required = false) String layout,
+            @RequestParam(required = false) String connectionType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(productService.filterProducts(brand, minPrice, maxPrice, pageable));
+        return ResponseEntity.ok(productService.filterProducts(brand, minPrice, maxPrice, layout, connectionType, pageable));
     }
 
     @GetMapping("/facets")
@@ -133,7 +147,10 @@ public class ProductController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<com.gearflow.dto.StockDTO> updateStock(
             @PathVariable String variantId,
-            @RequestParam Integer quantity) {
+            @RequestBody java.util.Map<String, Integer> body) {
+        Integer quantity = body.get("stock");
+        if (quantity == null) quantity = body.get("quantity");
+        if (quantity == null) return ResponseEntity.badRequest().build();
         return ResponseEntity.ok(productService.updateStock(variantId, quantity));
     }
 
@@ -252,17 +269,7 @@ public class ProductController {
         return ResponseEntity.ok(productService.getRelatedProducts(id, limit));
     }
 
-    @GetMapping("/latest")
-    public ResponseEntity<List<ProductDTO>> getLatestProducts(
-            @RequestParam(defaultValue = "6") int limit) {
-        return ResponseEntity.ok(productService.getLatestProducts(limit));
-    }
 
-    @GetMapping("/best-selling")
-    public ResponseEntity<List<ProductDTO>> getBestSellingProducts(
-            @RequestParam(defaultValue = "6") int limit) {
-        return ResponseEntity.ok(productService.getBestSellingProducts(limit));
-    }
 
     @GetMapping("/by-date-range")
     public ResponseEntity<List<ProductDTO>> getProductsByDateRange(
@@ -270,5 +277,10 @@ public class ProductController {
             @RequestParam java.time.LocalDateTime endDate,
             @RequestParam(defaultValue = "6") int limit) {
         return ResponseEntity.ok(productService.getProductsByDateRange(startDate, endDate, limit));
+    }
+
+    @GetMapping("/public/stats")
+    public ResponseEntity<Map<String, Object>> getPublicStats() {
+        return ResponseEntity.ok(productService.getPublicStats());
     }
 }

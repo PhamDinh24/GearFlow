@@ -112,6 +112,28 @@ class AdminApiService extends BaseApiService {
     );
     return this.handleResponse<OrderDTO>(response);
   }
+
+  async getAllPayments(): Promise<any[]> {
+    const response = await this.fetchWithTimeout(
+      this.buildUrl('/admin/payments'),
+      {
+        method: 'GET',
+        headers: this.getHeaders(true),
+      }
+    );
+    return this.handleResponse<any[]>(response);
+  }
+
+  async getUserStats(): Promise<Record<string, { totalOrders: number; totalSpent: number }>> {
+    const response = await this.fetchWithTimeout(
+      this.buildUrl('/admin/users/stats'),
+      {
+        method: 'GET',
+        headers: this.getHeaders(true),
+      }
+    );
+    return this.handleResponse<Record<string, { totalOrders: number; totalSpent: number }>>(response);
+  }
 }
 
 export const adminApi = new AdminApiService();

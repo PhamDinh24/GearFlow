@@ -37,7 +37,8 @@ public class CacheConfig {
             "customer_recommendations",
             "product_analytics",
             "customer_analytics",
-            "sales_analytics"
+            "sales_analytics",
+            "public_stats"
         );
     }
 }

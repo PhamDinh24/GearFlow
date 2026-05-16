@@ -259,10 +259,15 @@ export function ImportExport() {
   };
 
   return (
-    <AdminPageWrapper>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold mb-6">Nhập / Xuất Dữ Liệu</h1>
-
+    <AdminPageWrapper
+      title="Nhập / Xuất Dữ Liệu"
+      description="Quản lý luân chuyển dữ liệu hệ thống thông qua tệp tin CSV"
+      helpContent="Công cụ quản lý dữ liệu hàng loạt:
+        • Xuất dữ liệu: Tải về toàn bộ danh sách Sản phẩm, Đơn hàng hoặc Khách hàng dưới định dạng CSV để lưu trữ hoặc báo cáo.
+        • Nhập dữ liệu: Cho phép thêm nhanh nhiều Thương hiệu hoặc Danh mục cùng lúc bằng cách tải lên file CSV mẫu.
+        • Mẫu CSV: Luôn tải và sử dụng File Mẫu trước khi nhập để đảm bảo cấu trúc dữ liệu chính xác.
+        • Lưu ý: Việc nhập dữ liệu không đúng định dạng có thể gây lỗi hệ thống."
+    >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Export Section */}
           <Card>
@@ -430,7 +435,6 @@ export function ImportExport() {
             </div>
           </CardContent>
         </Card>
-      </div>
     </AdminPageWrapper>
   );
 }

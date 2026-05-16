@@ -1,6 +1,7 @@
 package com.gearflow.controller;
 
 import com.gearflow.dto.ShippingAddressDTO;
+import com.gearflow.security.UserPrincipal;
 import com.gearflow.service.ShippingAddressService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,15 +21,17 @@ public class ShippingAddressController {
     
     @GetMapping
     public ResponseEntity<List<ShippingAddressDTO>> getUserAddresses(Authentication authentication) {
-        String userId = authentication.getName();
-        log.info("GET /shipping-addresses - User: {}", userId);
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        String userId = userPrincipal.getId();
+        log.info("GET /shipping-addresses - User: {} (ID: {})", userPrincipal.getUsername(), userId);
         return ResponseEntity.ok(addressService.getUserAddresses(userId));
     }
     
     @GetMapping("/default")
     public ResponseEntity<ShippingAddressDTO> getDefaultAddress(Authentication authentication) {
-        String userId = authentication.getName();
-        log.info("GET /shipping-addresses/default - User: {}", userId);
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        String userId = userPrincipal.getId();
+        log.info("GET /shipping-addresses/default - User: {} (ID: {})", userPrincipal.getUsername(), userId);
         ShippingAddressDTO address = addressService.getDefaultAddress(userId);
         if (address == null) {
             return ResponseEntity.noContent().build();
@@ -40,8 +43,9 @@ public class ShippingAddressController {
     public ResponseEntity<ShippingAddressDTO> getAddressById(
             @PathVariable String id,
             Authentication authentication) {
-        String userId = authentication.getName();
-        log.info("GET /shipping-addresses/{} - User: {}", id, userId);
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        String userId = userPrincipal.getId();
+        log.info("GET /shipping-addresses/{} - User: {} (ID: {})", id, userPrincipal.getUsername(), userId);
         return ResponseEntity.ok(addressService.getAddressById(userId, id));
     }
     
@@ -49,8 +53,9 @@ public class ShippingAddressController {
     public ResponseEntity<ShippingAddressDTO> createAddress(
             @RequestBody ShippingAddressDTO dto,
             Authentication authentication) {
-        String userId = authentication.getName();
-        log.info("POST /shipping-addresses - User: {}", userId);
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        String userId = userPrincipal.getId();
+        log.info("POST /shipping-addresses - User: {} (ID: {})", userPrincipal.getUsername(), userId);
         return ResponseEntity.ok(addressService.createAddress(userId, dto));
     }
     
@@ -59,8 +64,9 @@ public class ShippingAddressController {
             @PathVariable String id,
             @RequestBody ShippingAddressDTO dto,
             Authentication authentication) {
-        String userId = authentication.getName();
-        log.info("PUT /shipping-addresses/{} - User: {}", id, userId);
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        String userId = userPrincipal.getId();
+        log.info("PUT /shipping-addresses/{} - User: {} (ID: {})", id, userPrincipal.getUsername(), userId);
         return ResponseEntity.ok(addressService.updateAddress(userId, id, dto));
     }
     
@@ -68,8 +74,9 @@ public class ShippingAddressController {
     public ResponseEntity<Void> deleteAddress(
             @PathVariable String id,
             Authentication authentication) {
-        String userId = authentication.getName();
-        log.info("DELETE /shipping-addresses/{} - User: {}", id, userId);
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        String userId = userPrincipal.getId();
+        log.info("DELETE /shipping-addresses/{} - User: {} (ID: {})", id, userPrincipal.getUsername(), userId);
         addressService.deleteAddress(userId, id);
         return ResponseEntity.noContent().build();
     }
@@ -78,8 +85,9 @@ public class ShippingAddressController {
     public ResponseEntity<ShippingAddressDTO> setDefaultAddress(
             @PathVariable String id,
             Authentication authentication) {
-        String userId = authentication.getName();
-        log.info("POST /shipping-addresses/{}/set-default - User: {}", id, userId);
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        String userId = userPrincipal.getId();
+        log.info("POST /shipping-addresses/{}/set-default - User: {} (ID: {})", id, userPrincipal.getUsername(), userId);
         return ResponseEntity.ok(addressService.setDefaultAddress(userId, id));
     }
 }

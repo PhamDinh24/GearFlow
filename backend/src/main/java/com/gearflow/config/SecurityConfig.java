@@ -17,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -53,15 +54,24 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/h2-console/**")).permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/auth/**")).permitAll()
-                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/products")).permitAll()
+                .requestMatchers(AntPathRequestMatcher.antMatcher("/payment/callback")).permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/products/**")).permitAll()
-                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/recommendations/**")).permitAll()
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/categories/**")).permitAll()
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/brands/**")).permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/reviews/**")).permitAll()
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/recommendations/**")).permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.OPTIONS, "/**")).permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/admin/**")).hasRole("ADMIN")
-                .anyRequest().permitAll()
+                .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"message\": \"Unauthorized: Please log in.\"}");
+                })
+            )
             .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable()));
 
         return http.build();

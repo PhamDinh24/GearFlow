@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
-import { Pagination } from '../ui/pagination';
+import { CustomPagination } from '../ui/custom-pagination';
 import { AdminPageWrapper } from './PageWrapper';
 import {
   Star,
@@ -147,8 +147,13 @@ export function Reviews() {
     <AdminPageWrapper
       title="Quản Lý Đánh Giá"
       description="Quản lý đánh giá và phản hồi của khách hàng"
+      helpContent="Hệ thống giám sát phản hồi khách hàng:
+        • Phân tích: Theo dõi chỉ số hài lòng thông qua biểu đồ sao trung bình.
+        • Lọc: Tìm kiếm nhanh các đánh giá tiêu cực (1-2 sao) để kịp thời xử lý khiếu nại.
+        • Kiểm duyệt: Admin có quyền xóa bỏ các đánh giá vi phạm tiêu chuẩn cộng đồng hoặc spam.
+        • Trực quan: Các đánh giá tích cực (4-5 sao) được đánh dấu xanh để dễ nhận diện."
       actions={
-        <Button onClick={loadData} variant="outline">
+        <Button onClick={loadData} variant="outline" className="rounded-xl">
           <RefreshCcw className="w-4 h-4 mr-2" />
           Làm mới
         </Button>
@@ -358,7 +363,7 @@ export function Reviews() {
           {/* Pagination */}
           {filteredReviews.length > 0 && (
             <div className="mt-6">
-              <Pagination
+              <CustomPagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 totalItems={filteredReviews.length}

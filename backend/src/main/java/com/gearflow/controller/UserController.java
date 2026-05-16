@@ -90,6 +90,13 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUserRole(id, request.get("role")));
     }
 
+    @PutMapping("/admin/users/{id}/toggle-status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserDTO> toggleUserStatus(@PathVariable String id) {
+        log.info("PUT /api/admin/users/{}/toggle-status", id);
+        return ResponseEntity.ok(userService.toggleUserStatus(id));
+    }
+
     @DeleteMapping("/admin/users/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable String id) {

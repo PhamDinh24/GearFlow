@@ -18,12 +18,14 @@ public class ReviewDTO {
     private String id;
     private String userId;
     private String productId;
+    private String orderItemId;
 
     @Min(1)
     @Max(5)
     private Integer rating;
 
     private String comment;
+    private String userName; // Thêm trường userName
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

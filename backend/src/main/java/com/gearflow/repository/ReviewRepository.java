@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface ReviewRepository extends JpaRepository<Review, String> {
     List<Review> findByProductId(String productId);
     Optional<Review> findByUserIdAndProductId(String userId, String productId);
+    Optional<Review> findByUserIdAndOrderItemId(String userId, String orderItemId);
     
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.productId = :productId")
     Double getAverageRatingByProductId(@Param("productId") String productId);

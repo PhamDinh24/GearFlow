@@ -31,6 +31,17 @@ public class UserService {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        if (userDTO.getEmail() != null && !userDTO.getEmail().isEmpty()) {
+            // Check if email is already taken by another user
+            if (userRepository.existsByEmail(userDTO.getEmail())) {
+                User existingUser = userRepository.findByEmail(userDTO.getEmail()).orElse(null);
+                if (existingUser != null && !existingUser.getId().equals(id)) {
+                    throw new com.gearflow.exception.BusinessException("Email already in use", 
+                        org.springframework.http.HttpStatus.CONFLICT);
+                }
+            }
+            user.setEmail(userDTO.getEmail());
+        }
         if (userDTO.getPhone() != null && !userDTO.getPhone().isEmpty()) {
             user.setPhone(userDTO.getPhone());
         }
@@ -142,14 +153,27 @@ public class UserService {
         }
     }
 
+    @Transactional
+    public UserDTO toggleUserStatus(String id) {
+        log.info("Toggling user {} status", id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        user.setActive(!user.getActive());
+        User updated = userRepository.save(user);
+        log.info("User status toggled successfully to: {}", updated.getActive());
+        return convertToDTO(updated);
+    }
+
     private UserDTO convertToDTO(User user) {
         return UserDTO.builder()
             .id(user.getId())
             .username(user.getUsername())
+            .email(user.getEmail())
             .phone(user.getPhone())
             .address(user.getAddress())
             .imageUrl(user.getImageUrl())
             .role(user.getRole().toString())
+            .active(user.getActive())
             .createdAt(user.getCreatedAt())
             .updatedAt(user.getUpdatedAt())
             .build();

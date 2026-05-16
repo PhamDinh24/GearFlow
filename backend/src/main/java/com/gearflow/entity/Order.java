@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
+
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,6 +25,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SQLDelete(sql = "UPDATE orders SET is_deleted = true WHERE order_id = ?")
+@Where(clause = "is_deleted = false")
 public class Order {
 
     @Id
@@ -39,17 +44,29 @@ public class Order {
     @Builder.Default
     private OrderStatus status = OrderStatus.PENDING;
 
+    @Column(name = "shipping_full_name")
+    private String shippingFullName;
+
+    @Column(name = "shipping_email")
+    private String shippingEmail;
+
+    @Column(name = "shipping_phone", length = 50)
+    private String shippingPhone;
+
     @Column(name = "shipping_address", length = 500)
     private String shippingAddress;
+
+    @Column(name = "shipping_ward")
+    private String shippingWard;
+
+    @Column(name = "shipping_district")
+    private String shippingDistrict;
 
     @Column(name = "shipping_city", length = 100)
     private String shippingCity;
 
     @Column(name = "shipping_postal_code", length = 20)
     private String shippingPostalCode;
-
-    @Column(name = "shipping_phone", length = 50)
-    private String shippingPhone;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -59,12 +76,17 @@ public class Order {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
+
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "order_id")
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
     public enum OrderStatus {
-        PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+        PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED,
+        RETURN_REQUESTED, RETURNED, RETURN_REJECTED
     }
 }

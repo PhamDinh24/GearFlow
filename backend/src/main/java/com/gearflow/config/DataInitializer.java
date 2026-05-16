@@ -26,6 +26,7 @@ public class DataInitializer implements CommandLineRunner {
                     .password(passwordEncoder.encode("password123"))
                     .phone("0123456789")
                     .address("Hanoi, Vietnam")
+                    .email("test.user@gearflow.com")
                     .role(User.UserRole.USER)
                     .build();
             userRepository.save(testUser);
@@ -40,6 +41,7 @@ public class DataInitializer implements CommandLineRunner {
                     .password(passwordEncoder.encode("password123"))
                     .phone("0987654321")
                     .address("Hanoi, Vietnam")
+                    .email("admin.init@gearflow.com")
                     .role(User.UserRole.ADMIN)
                     .build();
             userRepository.save(adminUser);

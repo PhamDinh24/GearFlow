@@ -44,6 +44,7 @@ public class ProductService {
     private final com.gearflow.repository.BrandRepository brandRepository;
     private final com.gearflow.repository.CategoryRepository categoryRepository;
     private final com.gearflow.repository.AttributeDefinitionRepository attributeDefinitionRepository;
+    private final com.gearflow.repository.UserRepository userRepository;
 
     @Cacheable(value = "products", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -65,12 +66,12 @@ public class ProductService {
         return productRepository.findByNameContainingIgnoreCase(keyword, pageable).map(this::convertToDTO);
     }
 
-    @Cacheable(value = "products_filter", key = "#brand + '-' + #minPrice + '-' + #maxPrice + '-' + #pageable.pageNumber")
-    public Page<ProductDTO> filterProducts(String brand, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
-        log.info("Filtering products: brand={}, minPrice={}, maxPrice={}", 
-                brand, minPrice, maxPrice);
+    @Cacheable(value = "products_filter", key = "#brand + '-' + #minPrice + '-' + #maxPrice + '-' + #layout + '-' + #connectionType + '-' + #pageable.pageNumber")
+    public Page<ProductDTO> filterProducts(String brand, java.math.BigDecimal minPrice, java.math.BigDecimal maxPrice, String layout, String connectionType, Pageable pageable) {
+        log.info("Filtering products: brand={}, minPrice={}, maxPrice={}, layout={}, connectionType={}", 
+                brand, minPrice, maxPrice, layout, connectionType);
 
-        return productRepository.findByFilters(brand, brand, minPrice, maxPrice, pageable)
+        return productRepository.findByFilters(brand, brand, minPrice, maxPrice, layout, connectionType, pageable)
                 .map(this::convertToDTO);
     }
 
@@ -154,6 +155,9 @@ public class ProductService {
                 .brandId(dto.getBrandId())
                 .support(dto.getSupport())
                 .imageUrl(dto.getImageUrl())
+                .layout(dto.getLayout())
+                .connectionType(dto.getConnectionType())
+                .active(dto.getActive() != null ? dto.getActive() : true)
                 .build();
     }
 
@@ -165,13 +169,16 @@ public class ProductService {
         if (dto.getBrandId() != null) product.setBrandId(dto.getBrandId());
         if (dto.getSupport() != null) product.setSupport(dto.getSupport());
         if (dto.getImageUrl() != null) product.setImageUrl(dto.getImageUrl());
+        if (dto.getLayout() != null) product.setLayout(dto.getLayout());
+        if (dto.getConnectionType() != null) product.setConnectionType(dto.getConnectionType());
+        if (dto.getActive() != null) product.setActive(dto.getActive());
     }
 
     public ProductDTO convertToDTO(Product product) {
         // Load variants with stock
         List<ProductVariant> variants = productVariantRepository.findByProductId(product.getId());
         List<ProductVariantDTO> variantDTOs = variants.stream()
-                .map(this::convertVariantToDTO)
+                .map(v -> convertVariantToDTO(v, product.getBasePrice()))
                 .collect(Collectors.toList());
 
         // Load attributes
@@ -197,6 +204,9 @@ public class ProductService {
                 .brandId(product.getBrandId())
                 .support(product.getSupport())
                 .imageUrl(product.getImageUrl())
+                .layout(product.getLayout())
+                .connectionType(product.getConnectionType())
+                .active(product.getActive())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .variants(variantDTOs)
@@ -205,11 +215,14 @@ public class ProductService {
                 .build();
     }
 
-    private ProductVariantDTO convertVariantToDTO(ProductVariant variant) {
+    private ProductVariantDTO convertVariantToDTO(ProductVariant variant, BigDecimal basePrice) {
         // Get stock for this variant
         Stock stock = stockRepository.findById(variant.getId()).orElse(null);
         int stockQuantity = stock != null ? stock.getQuantity() : 0;
         int availableStock = stock != null ? stock.getAvailable() : 0;
+
+        BigDecimal priceModifier = variant.getPriceModifier() != null ? variant.getPriceModifier() : BigDecimal.ZERO;
+        BigDecimal finalPrice = basePrice.add(priceModifier);
 
         return ProductVariantDTO.builder()
                 .id(variant.getId())
@@ -218,7 +231,8 @@ public class ProductService {
                 .color(variant.getColor())
                 .keycapSet(variant.getKeycapSet())
                 .connectionType(variant.getConnectionType())
-                .priceModifier(variant.getPriceModifier())
+                .priceModifier(priceModifier)
+                .finalPrice(finalPrice)
                 .availableStock(availableStock)
                 .stock(stockQuantity)
                 .inStock(availableStock > 0)
@@ -269,11 +283,10 @@ public class ProductService {
         return latest.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
     
-    @Cacheable(value = "best_selling_products", key = "#limit")
     public List<ProductDTO> getBestSellingProducts(int limit) {
-        log.info("Getting best selling products, limit: {}", limit);
-        List<Product> bestSelling = productRepository.findBestSellingProducts(PageRequest.of(0, limit));
-        return bestSelling.stream().map(this::convertToDTO).collect(Collectors.toList());
+        log.info("Getting most wishlisted (popular) products, limit: {}", limit);
+        List<Product> popular = productRepository.findMostWishlistedProducts(PageRequest.of(0, limit));
+        return popular.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
     
     @Cacheable(value = "products_by_date", key = "#startDate + '-' + #endDate")
@@ -289,23 +302,41 @@ public class ProductService {
         return products.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "public_stats", key = "'all'")
+    public Map<String, Object> getPublicStats() {
+        log.info("Fetching public stats");
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalProducts", productRepository.count());
+        // Only count users with USER role for "Khách hàng"
+        stats.put("totalUsers", userRepository.count()); 
+        return stats;
+    }
+
     // --- Variant Management Methods ---
     @Transactional(readOnly = true)
     public List<ProductVariantDTO> getVariantsByProductId(String productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
         return productVariantRepository.findByProductId(productId).stream()
-                .map(this::convertVariantToDTO).collect(Collectors.toList());
+                .map(v -> convertVariantToDTO(v, product.getBasePrice())).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public ProductVariantDTO getVariantById(String variantId) {
         ProductVariant variant = productVariantRepository.findById(variantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Variant not found"));
-        return convertVariantToDTO(variant);
+        Product product = productRepository.findById(variant.getProductId())
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+        return convertVariantToDTO(variant, product.getBasePrice());
     }
 
     @Transactional
     @CacheEvict(value = {"products", "product"}, allEntries = true)
     public ProductVariantDTO createVariant(String productId, ProductVariantDTO variantDTO) {
+        // Get product to retrieve basePrice
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+        
         String variantId = java.util.UUID.randomUUID().toString();
         ProductVariant variant = ProductVariant.builder()
                 .id(variantId).productId(productId)
@@ -315,7 +346,7 @@ public class ProductService {
                 .build();
         ProductVariant saved = productVariantRepository.save(variant);
         stockRepository.save(Stock.builder().variantId(variantId).quantity(0).reserved(0).build());
-        return convertVariantToDTO(saved);
+        return convertVariantToDTO(saved, product.getBasePrice());
     }
 
     @Transactional
@@ -323,10 +354,29 @@ public class ProductService {
     public ProductVariantDTO updateVariant(String variantId, ProductVariantDTO variantDTO) {
         ProductVariant variant = productVariantRepository.findById(variantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Variant not found"));
+        
+        // Get product to retrieve basePrice
+        Product product = productRepository.findById(variant.getProductId())
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+        
+        // Update all variant fields if provided
+        if (variantDTO.getSwitchType() != null) variant.setSwitchType(variantDTO.getSwitchType());
         if (variantDTO.getColor() != null) variant.setColor(variantDTO.getColor());
         if (variantDTO.getKeycapSet() != null) variant.setKeycapSet(variantDTO.getKeycapSet());
+        if (variantDTO.getConnectionType() != null) variant.setConnectionType(variantDTO.getConnectionType());
         if (variantDTO.getPriceModifier() != null) variant.setPriceModifier(variantDTO.getPriceModifier());
-        return convertVariantToDTO(productVariantRepository.save(variant));
+        
+        productVariantRepository.save(variant);
+        
+        // Update stock if provided
+        if (variantDTO.getStock() != null && variantDTO.getStock() >= 0) {
+            Stock stock = stockRepository.findById(variantId)
+                    .orElse(Stock.builder().variantId(variantId).quantity(0).reserved(0).build());
+            stock.setQuantity(variantDTO.getStock());
+            stockRepository.save(stock);
+        }
+        
+        return convertVariantToDTO(variant, product.getBasePrice());
     }
 
     @Transactional
@@ -365,6 +415,15 @@ public class ProductService {
     public void releaseReservedStock(String variantId, Integer amount) {
         Stock stock = stockRepository.findById(variantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Stock not found for variant: " + variantId));
+        stock.setReserved(Math.max(0, stock.getReserved() - amount));
+        stockRepository.save(stock);
+    }
+
+    @Transactional
+    public void commitReservedStock(String variantId, Integer amount) {
+        Stock stock = stockRepository.findById(variantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Stock not found for variant: " + variantId));
+        stock.setQuantity(Math.max(0, stock.getQuantity() - amount));
         stock.setReserved(Math.max(0, stock.getReserved() - amount));
         stockRepository.save(stock);
     }

@@ -2,9 +2,12 @@ package com.gearflow.service;
 
 import com.gearflow.dto.ReviewDTO;
 import com.gearflow.entity.Review;
+import com.gearflow.entity.User;
+import com.gearflow.entity.Order;
 import com.gearflow.exception.BusinessException;
 import com.gearflow.exception.ResourceNotFoundException;
 import com.gearflow.repository.ReviewRepository;
+import com.gearflow.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -23,24 +26,39 @@ public class ReviewService {
     @Autowired
     private ReviewRepository reviewRepository;
 
+    @Autowired
+    private com.gearflow.repository.OrderRepository orderRepository;
+
+    @Autowired
+    private UserRepository userRepository; // Thêm UserRepository
+
     @Transactional
-    @CacheEvict(value = "reviews", key = "#productId", allEntries = true)
-    public ReviewDTO createReview(String userId, String productId, Integer rating, String comment) {
-        log.info("Creating review - User: {}, Product: {}, Rating: {}", userId, productId, rating);
+    @CacheEvict(value = "reviews", allEntries = true)
+    public ReviewDTO createReview(String userId, String productId, String orderItemId, Integer rating, String comment) {
+        log.info("Creating review - User: {}, Product: {}, OrderItem: {}, Rating: {}", userId, productId, orderItemId, rating);
         
         if (rating < 1 || rating > 5) {
             throw new BusinessException("Rating must be between 1 and 5");
         }
 
-        // Check for duplicate review
-        if (reviewRepository.findByUserIdAndProductId(userId, productId).isPresent()) {
-            throw new BusinessException("User already reviewed this product");
+        // Check if user has purchased and received the product
+        if (!orderRepository.hasUserPurchasedProductAndReceived(userId, productId, Order.OrderStatus.DELIVERED)) {
+            throw new BusinessException("Bạn chỉ có thể đánh giá sau khi đã nhận được hàng");
+        }
+
+        // Check for duplicate review for this specific order item
+        if (orderItemId != null && reviewRepository.findByUserIdAndOrderItemId(userId, orderItemId).isPresent()) {
+            throw new BusinessException("Bạn đã đánh giá sản phẩm này cho lần mua hàng này rồi");
+        } else if (orderItemId == null && reviewRepository.findByUserIdAndProductId(userId, productId).isPresent()) {
+             // Fallback for old reviews without orderItemId
+             throw new BusinessException("Bạn đã đánh giá sản phẩm này rồi");
         }
 
         Review review = Review.builder()
                 .id(UUID.randomUUID().toString())
                 .userId(userId)
                 .productId(productId)
+                .orderItemId(orderItemId)
                 .rating(rating)
                 .comment(comment)
                 .build();
@@ -52,15 +70,19 @@ public class ReviewService {
 
     @Transactional
     @CacheEvict(value = "reviews", allEntries = true)
-    public ReviewDTO updateReview(String reviewId, Integer rating, String comment) {
-        log.info("Updating review: {}", reviewId);
+    public ReviewDTO updateReview(String reviewId, String userId, Integer rating, String comment) {
+        log.info("Updating review: {} by user: {}", reviewId, userId);
         
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
+
+        if (!review.getUserId().equals(userId)) {
+            throw new BusinessException("You can only update your own reviews");
+        }
+
         if (rating != null && (rating < 1 || rating > 5)) {
             throw new BusinessException("Rating must be between 1 and 5");
         }
-
-        Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
         if (rating != null) {
             review.setRating(rating);
@@ -76,10 +98,15 @@ public class ReviewService {
 
     @Transactional
     @CacheEvict(value = "reviews", allEntries = true)
-    public void deleteReview(String reviewId) {
-        log.info("Deleting review: {}", reviewId);
+    public void deleteReview(String reviewId, String userId) {
+        log.info("Deleting review: {} by user: {}", reviewId, userId);
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
+        
+        if (!review.getUserId().equals(userId)) {
+            throw new BusinessException("You can only delete your own reviews");
+        }
+        
         reviewRepository.delete(review);
         log.info("Review deleted: {}", reviewId);
     }
@@ -108,13 +135,31 @@ public class ReviewService {
         return toDTO(review);
     }
 
+    public boolean canUserReview(String userId, String productId) {
+        return orderRepository.hasUserPurchasedProductAndReceived(userId, productId, Order.OrderStatus.DELIVERED) &&
+               reviewRepository.findByUserIdAndProductId(userId, productId).isEmpty();
+    }
+
     private ReviewDTO toDTO(Review review) {
+        // Lấy thông tin user để có userName
+        String userName = "Người dùng"; // Giá trị mặc định
+        try {
+            User user = userRepository.findById(review.getUserId()).orElse(null);
+            if (user != null) {
+                userName = user.getUsername(); // Sử dụng username thay vì fullName
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch user info for review {}: {}", review.getId(), e.getMessage());
+        }
+
         return ReviewDTO.builder()
                 .id(review.getId())
                 .userId(review.getUserId())
                 .productId(review.getProductId())
+                .orderItemId(review.getOrderItemId())
                 .rating(review.getRating())
                 .comment(review.getComment())
+                .userName(userName) // Thêm userName
                 .createdAt(review.getCreatedAt())
                 .updatedAt(review.getUpdatedAt())
                 .build();

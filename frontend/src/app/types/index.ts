@@ -39,6 +39,9 @@ export interface ProductDTO {
   brandId: string;
   support?: string;
   imageUrl?: string;
+  layout?: string;
+  connectionType?: string;
+  active?: boolean;
   createdAt: string;
   updatedAt: string;
   variants?: ProductVariantDTO[];
@@ -126,6 +129,7 @@ export interface OrderDTO {
   userId: string;
   totalAmount: number;
   status: string;
+  paymentMethod?: string;
   shippingAddress?: string;
   shippingCity?: string;
   shippingPostalCode?: string;

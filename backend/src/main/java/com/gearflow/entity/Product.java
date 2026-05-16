@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
+
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -23,6 +26,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SQLDelete(sql = "UPDATE products SET is_deleted = true WHERE product_id = ?")
+@Where(clause = "is_deleted = false")
 public class Product {
 
     @Id
@@ -49,6 +54,20 @@ public class Product {
 
     @Column(name = "image", length = 500)
     private String imageUrl;
+
+    @Column(name = "layout", length = 50)
+    private String layout;
+
+    @Column(name = "connection_type", length = 100)
+    private String connectionType;
+
+    @Column(name = "active")
+    @Builder.Default
+    private Boolean active = true;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

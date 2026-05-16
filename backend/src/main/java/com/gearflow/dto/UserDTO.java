@@ -15,10 +15,12 @@ public class UserDTO {
 
     private String id;
     private String username;
+    private String email;
     private String phone;
     private String address;
     private String imageUrl;
     private String role;
+    private Boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

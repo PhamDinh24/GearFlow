@@ -23,6 +23,9 @@ public class ProductDTO {
     private String brandId;
     private String support;
     private String imageUrl;
+    private String layout;
+    private String connectionType;
+    private Boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<ProductVariantDTO> variants;

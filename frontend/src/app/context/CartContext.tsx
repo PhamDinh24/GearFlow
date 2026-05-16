@@ -21,10 +21,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cart, setCart] = useState<CartDTO | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated } = useAuth();
+  const { isLoggedIn } = useAuth();
 
   const getCart = useCallback(async () => {
-    if (!isAuthenticated) {
+    if (!isLoggedIn) {
       setCart(null);
       return;
     }
@@ -44,10 +44,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isLoggedIn]);
 
   const addToCart = useCallback(async (variantId: string, quantity: number) => {
-    if (!isAuthenticated) throw new Error('Please login first');
+    if (!isLoggedIn) throw new Error('Please login first');
 
     setIsLoading(true);
     setError(null);
@@ -62,10 +62,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isLoggedIn]);
 
   const updateCartItem = useCallback(async (variantId: string, quantity: number) => {
-    if (!isAuthenticated) throw new Error('Please login first');
+    if (!isLoggedIn) throw new Error('Please login first');
 
     setIsLoading(true);
     setError(null);
@@ -80,10 +80,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isLoggedIn]);
 
   const removeFromCart = useCallback(async (variantId: string) => {
-    if (!isAuthenticated) throw new Error('Please login first');
+    if (!isLoggedIn) throw new Error('Please login first');
 
     setIsLoading(true);
     setError(null);
@@ -98,10 +98,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isLoggedIn]);
 
   const clearCartHandler = useCallback(async () => {
-    if (!isAuthenticated) throw new Error('Please login first');
+    if (!isLoggedIn) throw new Error('Please login first');
 
     setIsLoading(true);
     setError(null);
@@ -116,14 +116,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isLoggedIn]);
 
   // Fetch cart when authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isLoggedIn) {
       getCart();
     }
-  }, [isAuthenticated, getCart]);
+  }, [isLoggedIn, getCart]);
 
   const cartCount = cart?.items?.length || 0;
 

@@ -46,6 +46,17 @@ class OrderApiService extends BaseApiService {
     );
     return this.handleResponse<OrderDTO>(response);
   }
+
+  async requestReturn(orderId: string): Promise<OrderDTO> {
+    const response = await this.fetchWithTimeout(
+      this.buildUrl(`/orders/${orderId}/return`),
+      {
+        method: 'POST',
+        headers: this.getHeaders(true),
+      }
+    );
+    return this.handleResponse<OrderDTO>(response);
+  }
 }
 
 export const orderApi = new OrderApiService();

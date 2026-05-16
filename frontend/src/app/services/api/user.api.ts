@@ -63,6 +63,17 @@ class UserApiService extends BaseApiService {
     return this.handleResponse<UserDTO>(response);
   }
 
+  async toggleUserStatus(userId: string): Promise<UserDTO> {
+    const response = await this.fetchWithTimeout(
+      this.buildUrl(`/admin/users/${userId}/toggle-status`),
+      {
+        method: 'PUT',
+        headers: this.getHeaders(true),
+      }
+    );
+    return this.handleResponse<UserDTO>(response);
+  }
+
   async deleteUser(userId: string): Promise<void> {
     const response = await this.fetchWithTimeout(
       this.buildUrl(`/admin/users/${userId}`),
