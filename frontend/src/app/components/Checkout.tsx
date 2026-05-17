@@ -12,6 +12,7 @@ import { orderService } from "../services/orderService";
 import { paymentService } from "../services/paymentService";
 import { shippingAddressService, type ShippingAddress } from "../services/shippingAddressService";
 import { toast } from "sonner";
+import { refreshHeaderCounts } from "../utils/events";
 
 export function Checkout() {
   const navigate = useNavigate();
@@ -108,7 +109,7 @@ export function Checkout() {
     setLoading(true);
 
     try {
-      // Create order with all detailed fields
+      // Create order with all detailed fields and filtered variantIds
       const order = await orderService.createOrder({
         shippingFullName: formData.fullName,
         shippingEmail: formData.email,
@@ -117,6 +118,7 @@ export function Checkout() {
         shippingWard: formData.ward,
         shippingDistrict: formData.district,
         shippingCity: formData.city,
+        variantIds: location.state?.selectedVariantIds,
       });
 
       // 2. Create payment
@@ -128,6 +130,7 @@ export function Checkout() {
         const vnpayUrl = paymentService.buildVNPayUrl(vnpayParams);
         window.location.href = vnpayUrl;
       } else {
+        refreshHeaderCounts();
         navigate('/payment-result', {
           state: {
             success: true,

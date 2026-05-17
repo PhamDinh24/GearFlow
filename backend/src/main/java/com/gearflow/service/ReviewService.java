@@ -140,6 +140,15 @@ public class ReviewService {
                reviewRepository.findByUserIdAndProductId(userId, productId).isEmpty();
     }
 
+    @Transactional(readOnly = true)
+    public List<ReviewDTO> getAllReviews() {
+        log.info("Fetching all reviews for admin");
+        return reviewRepository.findAll().stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
     private ReviewDTO toDTO(Review review) {
         // Lấy thông tin user để có userName
         String userName = "Người dùng"; // Giá trị mặc định

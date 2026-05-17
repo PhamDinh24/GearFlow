@@ -32,46 +32,47 @@ export function Root() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifMenuRef = useRef<HTMLDivElement>(null);
 
+  const loadCounts = async () => {
+    if (isLoggedIn) {
+      try {
+        const [cart, wishlist, notifCount, notifs] = await Promise.all([
+          cartService.getCart(),
+          wishlistService.getWishlist(),
+          notificationService.getUnreadCount(),
+          notificationService.getNotifications()
+        ]);
+        setCartCount(cart.totalItems || 0);
+        setWishlistCount(wishlist.items?.length || 0);
+        
+        // Show toast for new notifications
+        if (notifCount > notificationCount) {
+          const newNotifs = notifs.filter((n: any) => !n.isRead);
+          if (newNotifs.length > 0) {
+            toast.info(`Bạn có thông báo mới: ${newNotifs[0].title}`, {
+              description: newNotifs[0].message,
+              action: {
+                label: "Xem",
+                onClick: () => setNotifMenuOpen(true)
+              }
+            });
+          }
+        }
+
+        setNotificationCount(notifCount || 0);
+        setNotifications(notifs || []);
+      } catch (error) {
+        console.error('Failed to load counts:', error);
+      }
+    } else {
+      setCartCount(0);
+      setWishlistCount(0);
+      setNotificationCount(0);
+      setNotifications([]);
+    }
+  };
+
   // Load cart count, wishlist count, and notifications
   useEffect(() => {
-    const loadCounts = async () => {
-      if (isLoggedIn) {
-        try {
-          const [cart, wishlist, notifCount, notifs] = await Promise.all([
-            cartService.getCart(),
-            wishlistService.getWishlist(),
-            notificationService.getUnreadCount(),
-            notificationService.getNotifications()
-          ]);
-          setCartCount(cart.totalItems || 0);
-          setWishlistCount(wishlist.items?.length || 0);
-          
-          // Show toast for new notifications
-          if (notifCount > notificationCount) {
-            const newNotifs = notifs.filter((n: any) => !n.isRead);
-            if (newNotifs.length > 0) {
-              toast.info(`Bạn có thông báo mới: ${newNotifs[0].title}`, {
-                description: newNotifs[0].message,
-                action: {
-                  label: "Xem",
-                  onClick: () => setNotifMenuOpen(true)
-                }
-              });
-            }
-          }
-
-          setNotificationCount(notifCount || 0);
-          setNotifications(notifs || []);
-        } catch (error) {
-          console.error('Failed to load counts:', error);
-        }
-      } else {
-        setCartCount(0);
-        setWishlistCount(0);
-        setNotificationCount(0);
-        setNotifications([]);
-      }
-    };
     loadCounts();
 
     // Polling for notifications every 30s
@@ -122,9 +123,21 @@ export function Root() {
         setNotifMenuOpen(false);
       }
     };
+    
+    // Listen for custom refresh events
+    const refreshHandler = () => {
+      console.log('Refresh counts event received');
+      loadCounts();
+    };
+    
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
+    window.addEventListener("refresh-counts", refreshHandler);
+    
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      window.removeEventListener("refresh-counts", refreshHandler);
+    };
+  }, [notificationCount]); // Use notificationCount to keep closure updated if needed
 
   useEffect(() => {
     setMobileMenuOpen(false);

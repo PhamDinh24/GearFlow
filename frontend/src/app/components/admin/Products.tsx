@@ -26,6 +26,7 @@ import { ProductDTO } from "../../app/types";
 import { usePagination } from "../../hooks/usePagination";
 import { DataPagination } from "../ui/data-pagination";
 import api from "../../services/http";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 
 interface CategoryOption { id: string; name: string; }
 interface BrandOption { id: string; name: string; }
@@ -79,6 +80,7 @@ export function Products() {
     priceModifier: 0,
     stock: 0,
   });
+  const [deleteVariantConfirm, setDeleteVariantConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: "" });
 
   useEffect(() => {
     loadProducts();
@@ -164,9 +166,12 @@ export function Products() {
   };
 
   const handleDeleteVariant = async (variantId: string) => {
-    if (!confirm('Bạn có chắc muốn xóa biến thể này?')) return;
+    setDeleteVariantConfirm({ open: true, id: variantId });
+  };
+
+  const confirmDeleteVariant = async () => {
     if (!viewingProduct) return;
-    
+    const variantId = deleteVariantConfirm.id;
     try {
       await variantService.deleteVariant(variantId);
       toast.success('Đã xóa biến thể');
@@ -178,6 +183,8 @@ export function Products() {
     } catch (error: any) {
       console.error('Failed to delete variant:', error);
       toast.error(error.response?.data?.message || 'Không thể xóa biến thể');
+    } finally {
+      setDeleteVariantConfirm({ open: false, id: "" });
     }
   };
 
@@ -1166,6 +1173,16 @@ export function Products() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteVariantConfirm.open}
+        onOpenChange={(open) => setDeleteVariantConfirm({ ...deleteVariantConfirm, open })}
+        onConfirm={confirmDeleteVariant}
+        title="Xác nhận xóa biến thể"
+        description="Bạn có chắc chắn muốn xóa biến thể này? Hành động này không thể hoàn tác và sẽ ảnh hưởng đến tồn kho."
+        type="danger"
+        confirmText="Xóa biến thể"
+      />
     </>
   );
 }

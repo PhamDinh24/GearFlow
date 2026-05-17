@@ -14,6 +14,7 @@ import com.gearflow.exception.ResourceNotFoundException;
 import com.gearflow.repository.ProductRepository;
 import com.gearflow.repository.ProductVariantRepository;
 import com.gearflow.repository.ProductAttributeRepository;
+import com.gearflow.repository.OrderItemRepository;
 import com.gearflow.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ public class ProductService {
     private final com.gearflow.repository.CategoryRepository categoryRepository;
     private final com.gearflow.repository.AttributeDefinitionRepository attributeDefinitionRepository;
     private final com.gearflow.repository.UserRepository userRepository;
+    private final OrderItemRepository orderItemRepository;
 
     @Cacheable(value = "products", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -379,11 +381,26 @@ public class ProductService {
         return convertVariantToDTO(variant, product.getBasePrice());
     }
 
+    private final com.gearflow.repository.CartItemRepository cartItemRepository;
+
     @Transactional
     @CacheEvict(value = {"products", "product"}, allEntries = true)
     public void deleteVariant(String variantId) {
+        log.info("Attempting to delete variant: {}", variantId);
+        
+        // Removed hard constraints on deletion to allow admin more flexibility 
+        // as requested by the user.
+
+        // 1. Clean up Cart Items (Soft constraint, can be deleted)
+        if (cartItemRepository.existsByVariantId(variantId)) {
+            log.info("Removing variant {} from all active carts before deletion", variantId);
+            cartItemRepository.deleteByVariantId(variantId);
+        }
+
+        // 3. Delete from variant and stock repositories
         productVariantRepository.deleteById(variantId);
         stockRepository.deleteById(variantId);
+        log.info("Variant {} and associated stock successfully deleted", variantId);
     }
 
     // --- Stock Management Methods ---

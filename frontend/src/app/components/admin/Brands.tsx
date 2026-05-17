@@ -9,17 +9,24 @@ import {
 import { Plus, Edit, Trash2, Search, ToggleLeft, ToggleRight, Package } from "lucide-react";
 import { toast } from "sonner";
 import { brandApi } from "../../services/api";
-import { BrandDTO } from "../../app/types";
+import { BrandDTO, ProductDTO } from "../../app/types";
 import { usePagination } from "../../hooks/usePagination";
 import { DataPagination } from "../ui/data-pagination";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "../ui/table";
+import { productApi } from "../../services/api/product.api";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 
 export function Brands() {
-  const [brands, setBrands] = useState<BrandDTO[]>([]);
+  const [brands, setBrands] = useState<(BrandDTO & { productCount: number })[]>([]);
+  const [products, setProducts] = useState<ProductDTO[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [editItem, setEditItem] = useState<BrandDTO | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", description: "" });
   const [addForm, setAddForm] = useState({ name: "", description: "" });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: "" });
 
   useEffect(() => {
     loadBrands();
@@ -27,8 +34,18 @@ export function Brands() {
 
   const loadBrands = async () => {
     try {
-      const data = await brandApi.getBrands();
-      setBrands(data);
+      const [brandData, productData] = await Promise.all([
+        brandApi.getBrands(),
+        productApi.getProducts(0, 1000) // Fetch large batch for counts
+      ]);
+      
+      const brandsWithCounts = brandData.map(brand => ({
+        ...brand,
+        productCount: productData.content.filter(p => p.brandId === brand.id).length
+      }));
+      
+      setBrands(brandsWithCounts);
+      setProducts(productData.content);
     } catch (error) {
       toast.error("Lỗi tải danh sách thương hiệu");
     }
@@ -77,13 +94,19 @@ export function Brands() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Xác nhận xóa?")) return;
+    setDeleteConfirm({ open: true, id });
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteConfirm.id;
     try {
       await brandApi.deleteBrand(id);
       setBrands(prev => prev.filter(b => b.id !== id));
       toast.success("Đã xóa thương hiệu");
     } catch (error) {
       toast.error("Không thể xóa thương hiệu");
+    } finally {
+      setDeleteConfirm({ open: false, id: "" });
     }
   };
 
@@ -149,45 +172,66 @@ export function Brands() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {paginatedBrands.map(brand => (
-            <div key={brand.id} className={`bg-white rounded-2xl border-2 p-5 hover:shadow-md transition-shadow border-slate-200`}>
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center text-2xl font-bold text-slate-600">
-                    {brand.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900">{brand.name}</h3>
-                  </div>
-                </div>
-                <button onClick={() => handleToggle(brand.id)} className="mt-1">
-                  <ToggleRight className="w-6 h-6 text-emerald-500" />
-                </button>
-              </div>
-
-              <p className="text-sm text-slate-500 mb-3 line-clamp-2 leading-relaxed">{brand.description || 'Chưa có mô tả'}</p>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                    <Package className="w-4 h-4" />
-                    <span>0 sản phẩm</span>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => handleEditOpen(brand)} className="rounded-lg h-8 w-8 p-0 hover:bg-indigo-50 hover:text-indigo-600">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(brand.id)} className="rounded-lg h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
-          {/* Pagination */}
-          <div className="mt-8 bg-white rounded-2xl border border-slate-200">
+        {/* Table View */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="font-bold text-slate-900">Danh sách thương hiệu ({filtered.length})</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50">
+                  <TableHead className="w-[80px]">ID</TableHead>
+                  <TableHead>Thương hiệu</TableHead>
+                  <TableHead>Mô tả</TableHead>
+                  <TableHead className="text-right">Số SP</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedBrands.map(brand => (
+                  <TableRow key={brand.id} className="hover:bg-slate-50 transition-colors">
+                    <TableCell className="font-mono text-xs text-slate-400">{brand.id.substring(0, 8)}...</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-sm font-bold text-slate-600">
+                          {brand.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-bold text-slate-900">{brand.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-slate-500 text-sm max-w-xs">
+                      <p className="truncate">{brand.description || 'Chưa có mô tả'}</p>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="inline-flex items-center justify-center min-w-[32px] h-8 px-2 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-sm">
+                        {brand.productCount}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <button onClick={() => handleToggle(brand.id)} className="flex items-center gap-1.5 group">
+                        <ToggleRight className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+                        <span className="text-sm text-emerald-700 font-bold">Hoạt động</span>
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditOpen(brand)} className="rounded-lg h-9 w-9 p-0 hover:bg-indigo-50 hover:text-indigo-600">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(brand.id)} className="rounded-lg h-9 w-9 p-0 hover:bg-red-50 hover:text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          
+          <div className="p-4 border-t border-slate-100 bg-slate-50/30">
             <DataPagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -257,6 +301,15 @@ export function Brands() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa thương hiệu"
+        description="Bạn có chắc chắn muốn xóa thương hiệu này? Hành động này sẽ ảnh hưởng đến các sản phẩm thuộc hãng này."
+        type="danger"
+        confirmText="Xóa thương hiệu"
+      />
     </AdminPageWrapper>
   );
 }

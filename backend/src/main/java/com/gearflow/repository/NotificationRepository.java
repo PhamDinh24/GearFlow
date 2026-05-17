@@ -11,6 +11,8 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, String> {
     Page<Notification> findByUserId(String userId, Pageable pageable);
+    Page<Notification> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
+    List<Notification> findByUserIdAndIsReadFalseOrderByCreatedAtDesc(String userId);
     List<Notification> findByUserIdAndIsReadFalse(String userId);
     long countByUserIdAndIsReadFalse(String userId);
 }

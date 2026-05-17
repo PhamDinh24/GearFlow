@@ -58,11 +58,14 @@ export function AdminReports() {
 
   // Order status distribution
   const statusData = [
-    { name: 'Đã giao', value: orderStats?.deliveredOrders || 0, color: '#10b981' },
-    { name: 'Đang giao', value: orderStats?.shippedOrders || 0, color: '#6366f1' },
-    { name: 'Đang xử lý', value: orderStats?.processingOrders || 0, color: '#f59e0b' },
-    { name: 'Chờ xử lý', value: orderStats?.pendingOrders || 0, color: '#3b82f6' },
+    { name: 'Đang chờ xác nhận', value: orderStats?.pendingOrders || 0, color: '#94a3b8' },
+    { name: 'Đã xác nhận', value: orderStats?.confirmedOrders || 0, color: '#3b82f6' },
+    { name: 'Đang chuẩn bị hàng', value: orderStats?.processingOrders || 0, color: '#f59e0b' },
+    { name: 'Đang giao hàng', value: orderStats?.shippedOrders || 0, color: '#6366f1' },
+    { name: 'Đã giao thành công', value: orderStats?.deliveredOrders || 0, color: '#10b981' },
     { name: 'Đã hủy', value: orderStats?.cancelledOrders || 0, color: '#ef4444' },
+    { name: 'Yêu cầu trả hàng', value: orderStats?.returnRequestedOrders || 0, color: '#f97316' },
+    { name: 'Trả hàng thành công', value: orderStats?.returnedOrders || 0, color: '#ec4899' },
   ].filter(s => s.value > 0);
 
   // Payment method - fallback to mock data if not available

@@ -16,11 +16,24 @@ import { Plus, Edit, Trash2, Search, Tag, ToggleLeft, ToggleRight } from "lucide
 import { toast } from "sonner";
 import { usePagination } from "../hooks/usePagination";
 import { DataPagination } from "./ui/data-pagination";
+import { mockProducts } from "../data/mockData";
 
 export function AdminCategories() {
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
+  const categoriesWithCounts = mockCategories.map(cat => ({
+    ...cat,
+    productCount: mockProducts.filter(p => 
+      p.category === cat.name || 
+      p.layout === cat.name ||
+      p.connectOptions?.some(co => co.type === cat.name) ||
+      p.switchOptions?.some(so => so.brand === cat.name)
+    ).length
+  }));
+
+  const [categories, setCategories] = useState<Category[]>(categoriesWithCounts);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("name-asc");
   const [editItem, setEditItem] = useState<Category | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", description: "", type: "layout" as Category['type'] });
@@ -30,7 +43,17 @@ export function AdminCategories() {
     const matchSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchType = typeFilter === "all" || c.type === typeFilter;
-    return matchSearch && matchType;
+    const matchStatus = statusFilter === "all" || 
+      (statusFilter === "active" && c.isActive) ||
+      (statusFilter === "inactive" && !c.isActive);
+    return matchSearch && matchType && matchStatus;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case "count-desc": return b.productCount - a.productCount;
+      case "count-asc": return a.productCount - b.productCount;
+      case "name-desc": return b.name.localeCompare(a.name);
+      default: return a.name.localeCompare(b.name);
+    }
   });
 
   // Pagination
@@ -144,16 +167,40 @@ export function AdminCategories() {
           ))}
         </div>
 
-        {/* Search */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Tìm kiếm danh mục..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 rounded-xl"
-            />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Tìm kiếm danh mục..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-9 rounded-xl h-11"
+              />
+            </div>
+            
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[160px] rounded-xl h-11">
+                <SelectValue placeholder="Trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                <SelectItem value="active">Đang hoạt động</SelectItem>
+                <SelectItem value="inactive">Đã tắt</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-[180px] rounded-xl h-11">
+                <SelectValue placeholder="Sắp xếp" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Tên A-Z</SelectItem>
+                <SelectItem value="name-desc">Tên Z-A</SelectItem>
+                <SelectItem value="count-desc">Sản phẩm (Nhiều nhất)</SelectItem>
+                <SelectItem value="count-asc">Sản phẩm (Ít nhất)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -191,7 +238,7 @@ export function AdminCategories() {
                         {typeGroups[cat.type]?.label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-semibold">{cat.productCount}</TableCell>
+                    <TableCell className="text-right font-bold text-slate-900">{cat.productCount}</TableCell>
                     <TableCell>
                       <button onClick={() => handleToggle(cat.id)} className="flex items-center gap-1.5">
                         {cat.isActive ? (

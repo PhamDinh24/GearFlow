@@ -14,6 +14,8 @@ import { Wishlist } from "./components/Wishlist";
 import { ChangePassword } from "./components/ChangePassword";
 import { Login } from "./components/Login";
 import { Register } from "./components/Register";
+import ForgotPassword from "./components/ForgotPassword";
+import ResetPassword from "./components/ResetPassword";
 import { ShippingAddresses } from "./components/user/ShippingAddresses";
 import { Dashboard as AdminDashboard } from "./components/admin/DashboardNew";
 import { Products as AdminProducts } from "./components/admin/Products";
@@ -35,6 +37,8 @@ export const router = createBrowserRouter([
       // Public routes - không cần đăng nhập
       { path: "login", Component: Login },
       { path: "register", Component: Register },
+      { path: "forgot-password", Component: ForgotPassword },
+      { path: "reset-password", Component: ResetPassword },
       { index: true, Component: Home },
       { path: "shop", Component: Shop },
       { path: "product/:id", Component: ProductDetail },

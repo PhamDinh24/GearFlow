@@ -36,6 +36,28 @@ class AuthApiService extends BaseApiService {
     );
     return this.handleResponse<AuthResponse>(response);
   }
+
+  async forgotPassword(email: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      this.buildUrl('/auth/forgot-password', { email }),
+      {
+        method: 'POST',
+        headers: this.getHeaders(false),
+      }
+    );
+    return this.handleResponse<void>(response);
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const response = await this.fetchWithTimeout(
+      this.buildUrl('/auth/reset-password', { token, newPassword }),
+      {
+        method: 'POST',
+        headers: this.getHeaders(false),
+      }
+    );
+    return this.handleResponse<void>(response);
+  }
 }
 
 export const authApi = new AuthApiService();

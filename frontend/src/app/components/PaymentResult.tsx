@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { CheckCircle, XCircle, Package, CreditCard, Clock } from "lucide-react";
 import { paymentService } from "../services/paymentService";
 import { toast } from "sonner";
+import { refreshHeaderCounts } from "../utils/events";
 
 export function PaymentResult() {
   const location = useLocation();
@@ -57,6 +58,7 @@ export function PaymentResult() {
 
       if (success) {
         toast.success('Thanh toán thành công!');
+        refreshHeaderCounts();
       } else {
         toast.error('Thanh toán thất bại');
       }

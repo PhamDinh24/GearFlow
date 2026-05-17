@@ -84,6 +84,25 @@ public class EmailNotificationService {
         log.info("Cancellation notification email sent for order: {}", orderId);
     }
 
+    public void sendPasswordResetEmail(String email, String resetLink) {
+        log.info("Sending password reset email to: {}", email);
+        
+        Map<String, Object> emailData = new HashMap<>();
+        emailData.put("email", email);
+        emailData.put("resetLink", resetLink);
+        emailData.put("expiryHours", 24);
+
+        // In a real app, you would use a real email address here
+        // For now, we use the email as the userId placeholder for the sendEmail method
+        sendEmail(email, "Password Reset Request", emailData);
+        
+        // Output for development convenience
+        log.info("================================================");
+        log.info("PASSWORD RESET EMAIL SENT TO: {}", email);
+        log.info("RESET LINK: {}", resetLink);
+        log.info("================================================");
+    }
+
     private void sendEmail(String userId, String subject, Map<String, Object> emailData) {
         log.info("Sending email to user: {} with subject: {}", userId, subject);
         // This is a placeholder implementation

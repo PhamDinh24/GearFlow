@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import { cartService } from "../services/cartService";
 import { wishlistService } from "../services/wishlistService";
 import { toast } from "sonner";
+import { refreshHeaderCounts } from "../utils/events";
 
 export function Home() {
   const [newProducts, setNewProducts] = useState<any[]>([]);
@@ -219,6 +220,7 @@ function ProductCard({ product }: ProductCardProps) {
         await wishlistService.addToWishlist(product.id);
         setIsInWishlist(true);
       }
+      refreshHeaderCounts();
     } catch (error) {}
   };
 
@@ -231,7 +233,7 @@ function ProductCard({ product }: ProductCardProps) {
       setAddingToCart(true);
       await cartService.addToCart(variantId, 1);
       toast.success('Đã thêm vào giỏ hàng');
-      window.dispatchEvent(new CustomEvent('cart-updated'));
+      refreshHeaderCounts();
     } catch (error) { toast.error('Không thể thêm vào giỏ'); }
     finally { setAddingToCart(false); }
   };
@@ -244,6 +246,7 @@ function ProductCard({ product }: ProductCardProps) {
     try {
       setAddingToCart(true);
       await cartService.addToCart(variantId, 1);
+      refreshHeaderCounts();
       navigate('/checkout', { state: { selectedVariantIds: [variantId] } });
     } catch (error) { toast.error('Không thể mua ngay'); }
     finally { setAddingToCart(false); }

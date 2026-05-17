@@ -19,6 +19,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 
 const ITEMS_PER_PAGE = 12;
 
@@ -29,6 +30,7 @@ export function Reviews() {
   const [ratingFilter, setRatingFilter] = useState<number | 'ALL'>('ALL');
   const [products, setProducts] = useState<Map<string, string>>(new Map());
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: "" });
 
   useEffect(() => {
     loadData();
@@ -37,33 +39,17 @@ export function Reviews() {
   const loadData = async () => {
     try {
       setLoading(true);
-      // Note: Backend needs to implement /admin/reviews endpoint
-      // For now, we'll load reviews from all products
+      // Fetch all reviews in a single high-performance call
+      const reviewsData = await reviewApi.getAllReviews();
+      
+      // Fetch products to build the product map (for display names)
       const productsRes = await productApi.getProducts(0, 1000);
-      const productsData = Array.isArray(productsRes) ? productsRes : productsRes.content || [];
-      
-      // Create product map
+      const productsList = Array.isArray(productsRes) ? productsRes : (productsRes.content || []);
       const productMap = new Map();
-      productsData.forEach((p: any) => productMap.set(p.id, p.name));
+      productsList.forEach((p: any) => productMap.set(p.id, p.name));
+      
       setProducts(productMap);
-
-      // Load reviews for all products
-      const allReviews: ReviewDTO[] = [];
-      for (const product of productsData) {
-        try {
-          const productReviews = await reviewApi.getProductReviews(product.id);
-          allReviews.push(...productReviews);
-        } catch (error) {
-          console.error(`Error loading reviews for product ${product.id}:`, error);
-        }
-      }
-      
-      // Sort reviews by createdAt (newest first)
-      const sortedReviews = allReviews.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      
-      setReviews(sortedReviews);
+      setReviews(reviewsData);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Không thể tải dữ liệu');
@@ -73,8 +59,11 @@ export function Reviews() {
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    if (!confirm('Bạn có chắc muốn xóa đánh giá này?')) return;
+    setDeleteConfirm({ open: true, id: reviewId });
+  };
 
+  const confirmDelete = async () => {
+    const reviewId = deleteConfirm.id;
     try {
       await reviewApi.deleteReview(reviewId);
       toast.success('Xóa đánh giá thành công');
@@ -82,6 +71,8 @@ export function Reviews() {
     } catch (error: any) {
       console.error('Error deleting review:', error);
       toast.error(error.message || 'Không thể xóa đánh giá');
+    } finally {
+      setDeleteConfirm({ open: false, id: "" });
     }
   };
 
@@ -374,6 +365,16 @@ export function Reviews() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa đánh giá"
+        description="Bạn có chắc chắn muốn xóa đánh giá này? Hành động này sẽ gỡ bỏ phản hồi của khách hàng vĩnh viễn."
+        type="danger"
+        confirmText="Xóa đánh giá"
+      />
     </AdminPageWrapper>
   );
 }

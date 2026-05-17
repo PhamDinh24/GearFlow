@@ -25,13 +25,13 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public Page<NotificationDTO> getUserNotifications(String userId, Pageable pageable) {
         log.info("Fetching notifications for user: {}", userId);
-        return notificationRepository.findByUserId(userId, pageable).map(this::convertToDTO);
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable).map(this::convertToDTO);
     }
 
     @Transactional(readOnly = true)
     public List<NotificationDTO> getUnreadNotifications(String userId) {
         log.info("Fetching unread notifications for user: {}", userId);
-        return notificationRepository.findByUserIdAndIsReadFalse(userId).stream()
+        return notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(userId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }

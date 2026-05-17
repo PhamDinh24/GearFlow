@@ -9,6 +9,7 @@ export interface CartItem {
   quantity: number;
   price: number;
   subtotal: number;
+  stock: number;
 }
 
 export interface Cart {
@@ -33,8 +34,8 @@ export const cartService = {
   },
 
   async updateCartItem(variantId: string, quantity: number): Promise<Cart> {
-    const response = await api.put(`/cart/items/${variantId}`, null, {
-      params: { quantity },
+    const response = await api.put(`/cart/items/${variantId}`, {
+      quantity,
     });
     return response.data;
   },

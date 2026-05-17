@@ -69,6 +69,11 @@ export const orderService = {
     return response.data;
   },
 
+  async confirmDelivery(orderId: string): Promise<Order> {
+    const response = await api.post(`/orders/${orderId}/confirm-delivery`);
+    return response.data;
+  },
+
   // Admin methods
   async getAllOrders(status?: string): Promise<Order[]> {
     const params = status ? { status } : {};

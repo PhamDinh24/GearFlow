@@ -170,8 +170,14 @@ public class AdminService {
         stats.put("totalRevenue", totalRevenue);
         stats.put("totalUsers", totalUsers);
         stats.put("newUsers", newUsers);
-        stats.put("deliveredOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.DELIVERED).count());
         stats.put("pendingOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.PENDING).count());
+        stats.put("confirmedOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.CONFIRMED).count());
+        stats.put("processingOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.PROCESSING).count());
+        stats.put("shippedOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.SHIPPED).count());
+        stats.put("deliveredOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.DELIVERED).count());
+        stats.put("cancelledOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.CANCELLED).count());
+        stats.put("returnRequestedOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.RETURN_REQUESTED).count());
+        stats.put("returnedOrders", allOrders.stream().filter(o -> o.getStatus() == Order.OrderStatus.RETURNED).count());
         stats.put("averageOrderValue", totalOrders > 0 ? totalRevenue.divide(java.math.BigDecimal.valueOf(totalOrders), 0, java.math.RoundingMode.HALF_UP) : 0);
         
         return stats;

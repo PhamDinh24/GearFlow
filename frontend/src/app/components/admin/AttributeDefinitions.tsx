@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { usePagination } from "../../hooks/usePagination";
 import { DataPagination } from "../ui/data-pagination";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 
 export function AttributeDefinitions() {
   const [attributes, setAttributes] = useState<AttributeDefinitionDTO[]>([]);
@@ -29,6 +30,7 @@ export function AttributeDefinitions() {
     variantAttribute: false,
     displayOrder: 0
   });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: "" });
 
   useEffect(() => {
     loadAttributes();
@@ -69,14 +71,20 @@ export function AttributeDefinitions() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Xóa thuộc tính này?")) return;
+    setDeleteConfirm({ open: true, id });
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteConfirm.id;
     try {
       setAttributes(prev => prev.filter(a => a.id !== id));
       await attributeApi.deleteAttribute(id);
-      toast.success("Đã xóa");
+      toast.success("Đã xóa thuộc tính thành công");
     } catch (e) {
-      toast.error("Không thể xóa");
+      toast.error("Không thể xóa thuộc tính");
       loadAttributes();
+    } finally {
+      setDeleteConfirm({ open: false, id: "" });
     }
   };
 
@@ -262,6 +270,16 @@ export function AttributeDefinitions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa thuộc tính"
+        description="Bạn có chắc chắn muốn xóa thuộc tính này? Hành động này sẽ gỡ bỏ định nghĩa dữ liệu và có thể ảnh hưởng đến các sản phẩm đang sử dụng nó."
+        type="danger"
+        confirmText="Xóa thuộc tính"
+      />
     </div>
   );
 }

@@ -29,12 +29,14 @@ import { DataPagination } from "../ui/data-pagination";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "../ui/dialog";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 
 export function Orders() {
   const [orders, setOrders] = useState<OrderDTO[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [viewOrder, setViewOrder] = useState<OrderDTO | null>(null);
+  const [statusChangeConfirm, setStatusChangeConfirm] = useState<{ open: boolean; orderId: string; status: string }>({ open: false, orderId: "", status: "" });
 
   useEffect(() => {
     loadOrders();
@@ -95,17 +97,17 @@ export function Orders() {
   };
 
   const getStatusText = (status: string) => {
-    const s = status.toLowerCase();
+    const s = status.toUpperCase();
     const texts: Record<string, string> = {
-      pending: 'Chờ xử lý',
-      confirmed: 'Đã xác nhận',
-      processing: 'Đang xử lý',
-      shipped: 'Đang giao hàng',
-      delivered: 'Đã giao hàng',
-      cancelled: 'Đã hủy',
-      return_requested: 'Yêu cầu trả hàng',
-      returned: 'Đã hoàn trả',
-      return_rejected: 'Từ chối trả hàng',
+      PENDING: 'Đang chờ xác nhận',
+      CONFIRMED: 'Đã xác nhận',
+      PROCESSING: 'Đang chuẩn bị hàng',
+      SHIPPED: 'Đang giao hàng',
+      DELIVERED: 'Đã giao thành công',
+      CANCELLED: 'Đã hủy',
+      RETURN_REQUESTED: 'Yêu cầu trả hàng',
+      RETURNED: 'Trả hàng thành công',
+      RETURN_REJECTED: 'Từ chối trả hàng',
     };
     return texts[s] || status;
   };
@@ -116,16 +118,46 @@ export function Orders() {
   const totalOrdersCount = filteredOrders.length;
   const pendingOrdersCount = orders.filter(o => o.status.toLowerCase() === 'pending' || o.status === 'RETURN_REQUESTED').length;
 
+  const getValidTransitions = (currentStatus: string): string[] => {
+    const s = currentStatus.toUpperCase();
+    switch (s) {
+      case 'PENDING':
+        return ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'CANCELLED'];
+      case 'CONFIRMED':
+        return ['PROCESSING', 'SHIPPED', 'CANCELLED'];
+      case 'PROCESSING':
+        return ['SHIPPED', 'CANCELLED'];
+      case 'SHIPPED':
+        return ['DELIVERED', 'CANCELLED'];
+      case 'DELIVERED':
+        return ['RETURN_REQUESTED'];
+      case 'RETURN_REQUESTED':
+        return ['RETURNED', 'RETURN_REJECTED'];
+      default:
+        return [];
+    }
+  };
+
   const handleStatusChange = async (orderId: string, newStatus: string) => {
+    if (newStatus === 'CANCELLED') {
+      setStatusChangeConfirm({ open: true, orderId, status: newStatus });
+      return;
+    }
+    await performStatusChange(orderId, newStatus);
+  };
+
+  const performStatusChange = async (orderId: string, newStatus: string) => {
     try {
       await adminApi.updateOrderStatus(orderId, newStatus);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
       if (viewOrder && viewOrder.id === orderId) {
         setViewOrder({ ...viewOrder, status: newStatus });
       }
-      toast.success(`Đã cập nhật đơn hàng #${orderId.substring(0, 8)} sang "${getStatusText(newStatus)}"`);
-    } catch (err) {
-      toast.error("Lỗi cập nhật trạng thái đơn hàng");
+      toast.success(`Đã cập nhật đơn hàng sang "${getStatusText(newStatus)}"`);
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi cập nhật trạng thái đơn hàng");
+    } finally {
+      setStatusChangeConfirm({ open: false, orderId: "", status: "" });
     }
   };
 
@@ -336,24 +368,49 @@ export function Orders() {
               </div>
 
               <div className="border-t pt-4">
-                <p className="font-semibold mb-2">Cập nhật trạng thái</p>
-                <div className="flex gap-2 flex-wrap">
-                  {['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED', 'RETURN_REJECTED'].map((status) => (
-                    <Button
-                      key={status}
-                      variant={viewOrder.status === status ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => handleStatusChange(viewOrder.id, status)}
-                    >
-                      {getStatusText(status)}
-                    </Button>
-                  ))}
-                </div>
+                <p className="font-semibold mb-3 text-slate-700">Cập nhật trạng thái mới</p>
+                {getValidTransitions(viewOrder.status).length > 0 ? (
+                  <div className="flex gap-3 items-center">
+                    <Select onValueChange={(val) => handleStatusChange(viewOrder.id, val)}>
+                      <SelectTrigger className="w-[240px] rounded-xl h-11 border-slate-200 shadow-sm">
+                        <SelectValue placeholder="Chọn trạng thái mới..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {getValidTransitions(viewOrder.status).map((status) => (
+                          <SelectItem key={status} value={status} className="rounded-lg py-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${getStatusColor(status).split(' ')[0]}`} />
+                              <span>{getStatusText(status)}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-400 italic">
+                      * Chỉ hiển thị các trạng thái hợp lệ tiếp theo
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-slate-300" />
+                    <p className="text-sm text-slate-500 font-medium">Đơn hàng đã hoàn tất, không thể thay đổi trạng thái.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={statusChangeConfirm.open}
+        onOpenChange={(open) => setStatusChangeConfirm({ ...statusChangeConfirm, open })}
+        onConfirm={() => performStatusChange(statusChangeConfirm.orderId, statusChangeConfirm.status)}
+        title="Xác nhận hủy đơn hàng"
+        description="Bạn có chắc chắn muốn hủy đơn hàng này? Hành động này sẽ hoàn lại tồn kho và không thể hoàn tác."
+        type="danger"
+        confirmText="Hủy đơn hàng"
+      />
     </>
   );
 }

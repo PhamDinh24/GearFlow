@@ -152,9 +152,9 @@ export function Login() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label htmlFor="password" className="text-slate-700 font-medium">Mật khẩu</Label>
-                <button type="button" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                <Link to="/forgot-password" size="sm" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                   Quên mật khẩu?
-                </button>
+                </Link>
               </div>
               <div className="relative">
                 <Input

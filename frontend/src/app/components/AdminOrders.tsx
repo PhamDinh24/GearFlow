@@ -30,14 +30,16 @@ import {
 } from "./ui/dialog";
 import { Search, Eye, X, Package, MapPin, Phone, Calendar, CreditCard, Truck, CheckCircle, Clock, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { usePagination } from "../hooks/usePagination";
 import { DataPagination } from "./ui/data-pagination";
+import { refreshHeaderCounts } from "../utils/events";
 
 export function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState('date-desc');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
@@ -66,6 +68,7 @@ export function AdminOrders() {
       await orderService.updateOrderStatus(orderId, newStatus);
       toast.success('Cập nhật trạng thái thành công');
       loadOrders();
+      refreshHeaderCounts();
     } catch (error: any) {
       console.error('Failed to update status:', error);
       toast.error(error.response?.data?.message || 'Không thể cập nhật trạng thái');
@@ -82,6 +85,7 @@ export function AdminOrders() {
       toast.success('Đã hủy đơn hàng');
       loadOrders();
       setSelectedOrder(null);
+      refreshHeaderCounts();
     } catch (error: any) {
       console.error('Failed to cancel order:', error);
       toast.error(error.response?.data?.message || 'Không thể hủy đơn hàng');
@@ -91,9 +95,19 @@ export function AdminOrders() {
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.items?.some(item => item.productName?.toLowerCase().includes(searchQuery.toLowerCase()));
+      order.items?.some(item => item.productName?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      order.shippingFullName?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    return matchesSearch;
+    const matchesPayment = paymentFilter === 'all' || order.paymentMethod === paymentFilter;
+
+    return matchesSearch && matchesPayment;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case 'total-desc': return b.totalAmount - a.totalAmount;
+      case 'total-asc': return a.totalAmount - b.totalAmount;
+      case 'date-asc': return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      default: return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
   });
 
   // Pagination
@@ -123,21 +137,27 @@ export function AdminOrders() {
       DELIVERED: 'bg-green-100 text-green-800',
       CANCELLED: 'bg-red-100 text-red-800',
       RETURN_REQUESTED: 'bg-amber-100 text-amber-800',
+      RETURN_CONFIRMED: 'bg-emerald-100 text-emerald-800',
+      RETURN_INSPECTING: 'bg-cyan-100 text-cyan-800',
       RETURNED: 'bg-slate-200 text-slate-800',
+      RETURN_REJECTED: 'bg-rose-100 text-rose-800',
     };
     return colors[status as keyof typeof colors] || colors.PENDING;
   };
 
   const getStatusText = (status: string) => {
     const texts = {
-      PENDING: 'Chờ xử lý',
+      PENDING: 'Đang chờ xác nhận',
       CONFIRMED: 'Đã xác nhận',
-      PROCESSING: 'Đang xử lý',
+      PROCESSING: 'Đang chuẩn bị hàng',
       SHIPPED: 'Đang giao hàng',
-      DELIVERED: 'Đã giao hàng',
+      DELIVERED: 'Đã giao thành công',
       CANCELLED: 'Đã hủy',
-      RETURN_REQUESTED: 'Chờ hoàn đơn',
-      RETURNED: 'Đã hoàn đơn',
+      RETURN_REQUESTED: 'Yêu cầu trả hàng',
+      RETURN_CONFIRMED: 'Đã xác nhận yêu cầu',
+      RETURN_INSPECTING: 'Đang kiểm tra sản phẩm',
+      RETURNED: 'Trả hàng thành công',
+      RETURN_REJECTED: 'Từ chối trả hàng',
     };
     return texts[status as keyof typeof texts] || status;
   };
@@ -200,33 +220,77 @@ export function AdminOrders() {
         {/* Filters */}
         <Card className="mb-6">
           <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  placeholder="Tìm kiếm đơn hàng..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Input
+                    placeholder="Tìm mã đơn, tên khách, sản phẩm..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-11 rounded-xl"
+                  />
+                </div>
+
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-full sm:w-[200px] h-11 rounded-xl">
+                    <SelectValue placeholder="Sắp xếp" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date-desc">Mới nhất</SelectItem>
+                    <SelectItem value="date-asc">Cũ nhất</SelectItem>
+                    <SelectItem value="total-desc">Giá trị (Cao → Thấp)</SelectItem>
+                    <SelectItem value="total-asc">Giá trị (Thấp → Cao)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[200px]">
-                  <SelectValue placeholder="Trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="PENDING">Chờ xử lý</SelectItem>
-                  <SelectItem value="CONFIRMED">Đã xác nhận</SelectItem>
-                  <SelectItem value="PROCESSING">Đang xử lý</SelectItem>
-                  <SelectItem value="SHIPPED">Đang giao</SelectItem>
-                  <SelectItem value="DELIVERED">Đã giao</SelectItem>
-                  <SelectItem value="CANCELLED">Đã hủy</SelectItem>
-                  <SelectItem value="RETURN_REQUESTED">Chờ hoàn đơn</SelectItem>
-                  <SelectItem value="RETURNED">Đã hoàn đơn</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-3">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[160px] h-10 bg-slate-50 border-none text-xs font-bold">
+                    <SelectValue placeholder="Trạng thái" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                    <SelectItem value="PENDING">Đang chờ xác nhận</SelectItem>
+                    <SelectItem value="CONFIRMED">Đã xác nhận</SelectItem>
+                    <SelectItem value="PROCESSING">Đang chuẩn bị hàng</SelectItem>
+                    <SelectItem value="SHIPPED">Đang giao</SelectItem>
+                    <SelectItem value="DELIVERED">Đã giao</SelectItem>
+                    <SelectItem value="CANCELLED">Đã hủy</SelectItem>
+                    <SelectItem value="RETURN_REQUESTED">Yêu cầu trả hàng</SelectItem>
+                    <SelectItem value="RETURN_CONFIRMED">Đã xác nhận yêu cầu</SelectItem>
+                    <SelectItem value="RETURN_INSPECTING">Đang kiểm tra SP</SelectItem>
+                    <SelectItem value="RETURNED">Đã hoàn trả</SelectItem>
+                    <SelectItem value="RETURN_REJECTED">Từ chối trả hàng</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+                  <SelectTrigger className="w-full sm:w-[160px] h-10 bg-slate-50 border-none text-xs font-bold">
+                    <SelectValue placeholder="Thanh toán" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả thanh toán</SelectItem>
+                    <SelectItem value="COD">Tiền mặt (COD)</SelectItem>
+                    <SelectItem value="VNPAY">Chuyển khoản (VNPay)</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {(statusFilter !== 'all' || paymentFilter !== 'all' || searchQuery !== '') && (
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => {
+                      setStatusFilter('all');
+                      setPaymentFilter('all');
+                      setSearchQuery('');
+                    }}
+                    className="h-10 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                  >
+                    Xóa lọc
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -302,13 +366,17 @@ export function AdminOrders() {
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="PENDING">Chờ xử lý</SelectItem>
+                              <SelectItem value="PENDING">Đang chờ xác nhận</SelectItem>
                               <SelectItem value="CONFIRMED">Đã xác nhận</SelectItem>
-                              <SelectItem value="PROCESSING">Đang xử lý</SelectItem>
+                              <SelectItem value="PROCESSING">Đang chuẩn bị hàng</SelectItem>
                               <SelectItem value="SHIPPED">Đang giao</SelectItem>
                               <SelectItem value="DELIVERED">Đã giao</SelectItem>
-                              <SelectItem value="RETURN_REQUESTED">Chờ hoàn đơn</SelectItem>
-                              <SelectItem value="RETURNED">Đã hoàn đơn</SelectItem>
+                              <SelectItem value="CANCELLED">Đã hủy</SelectItem>
+                              <SelectItem value="RETURN_REQUESTED">Yêu cầu trả hàng</SelectItem>
+                              <SelectItem value="RETURN_CONFIRMED">Xác nhận yêu cầu</SelectItem>
+                              <SelectItem value="RETURN_INSPECTING">Kiểm tra sản phẩm</SelectItem>
+                              <SelectItem value="RETURNED">Đã trả hàng</SelectItem>
+                              <SelectItem value="RETURN_REJECTED">Từ chối trả hàng</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>

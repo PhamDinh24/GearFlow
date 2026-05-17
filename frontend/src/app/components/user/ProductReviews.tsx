@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
-import { Star, Edit, Trash2, User, MessageSquare, Filter, SortAsc, SortDesc, Search, Calendar, TrendingUp } from 'lucide-react';
+import { Star, Edit, Trash2, User, MessageSquare, Filter, SortAsc, SortDesc, Search, Calendar, TrendingUp, Plus } from 'lucide-react';
+import { Badge } from '../ui/badge';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
 

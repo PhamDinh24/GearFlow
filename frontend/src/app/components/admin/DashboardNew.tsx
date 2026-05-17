@@ -63,12 +63,17 @@ const COLORS = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  'Đã giao': COLORS.success,
-  'Đang giao': COLORS.info,
-  'Đang xử lý': COLORS.warning,
-  'Chờ xử lý': COLORS.purple,
-  'Chờ hoàn đơn': COLORS.primary,
-  'Đã hoàn đơn': COLORS.danger,
+  'Đang chờ xác nhận': '#94a3b8', // Slate-400
+  'Đã xác nhận': '#3b82f6',       // Blue-500
+  'Đang chuẩn bị hàng': '#f59e0b', // Amber-500
+  'Đang giao hàng': '#6366f1',     // Indigo-500
+  'Đã giao thành công': '#10b981', // Emerald-500
+  'Đã hủy': '#ef4444',             // Red-500
+  'Yêu cầu trả hàng': '#f97316',    // Orange-500
+  'Đã xác nhận yêu cầu': '#06b6d4', // Cyan-500
+  'Đang kiểm tra sản phẩm': '#8b5cf6', // Violet-500
+  'Trả hàng thành công': '#ec4899', // Pink-500
+  'Từ chối trả hàng': '#475569',    // Slate-600
 };
 
 function DashboardNew() {
@@ -218,13 +223,17 @@ function DashboardNew() {
 
       // Orders by status
       const statusMap: Record<string, string> = {
-        'PENDING': 'Chờ xử lý',
-        'PROCESSING': 'Đang xử lý',
-        'SHIPPED': 'Đang giao',
-        'DELIVERED': 'Đã giao',
+        'PENDING': 'Đang chờ xác nhận',
+        'CONFIRMED': 'Đã xác nhận',
+        'PROCESSING': 'Đang chuẩn bị hàng',
+        'SHIPPED': 'Đang giao hàng',
+        'DELIVERED': 'Đã giao thành công',
         'CANCELLED': 'Đã hủy',
-        'RETURN_REQUESTED': 'Chờ hoàn đơn',
-        'RETURNED': 'Đã hoàn đơn',
+        'RETURN_REQUESTED': 'Yêu cầu trả hàng',
+        'RETURN_CONFIRMED': 'Đã xác nhận yêu cầu',
+        'RETURN_INSPECTING': 'Đang kiểm tra sản phẩm',
+        'RETURNED': 'Trả hàng thành công',
+        'RETURN_REJECTED': 'Từ chối trả hàng',
       };
 
       const ordersByStatus = Object.entries(

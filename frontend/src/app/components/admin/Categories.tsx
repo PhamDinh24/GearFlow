@@ -13,17 +13,20 @@ import {
 import { Plus, Edit, Trash2, Search, Tag, ToggleLeft, ToggleRight } from "lucide-react";
 import { toast } from "sonner";
 import { categoryApi } from "../../services/api";
-import { CategoryDTO } from "../../app/types";
+import { CategoryDTO, ProductDTO } from "../../app/types";
 import { usePagination } from "../../hooks/usePagination";
 import { DataPagination } from "../ui/data-pagination";
+import { productApi } from "../../services/api/product.api";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 
 export function Categories() {
-  const [categories, setCategories] = useState<CategoryDTO[]>([]);
+  const [categories, setCategories] = useState<(CategoryDTO & { productCount: number })[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [editItem, setEditItem] = useState<CategoryDTO | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", description: "" });
   const [editForm, setEditForm] = useState({ name: "", description: "" });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: "" });
 
   useEffect(() => {
     loadCategories();
@@ -31,8 +34,17 @@ export function Categories() {
 
   const loadCategories = async () => {
     try {
-      const data = await categoryApi.getCategories();
-      setCategories(data);
+      const [categoryData, productData] = await Promise.all([
+        categoryApi.getCategories(),
+        productApi.getProducts(0, 1000)
+      ]);
+      
+      const categoriesWithCounts = categoryData.map(cat => ({
+        ...cat,
+        productCount: productData.content.filter(p => p.categoryId === cat.id).length
+      }));
+      
+      setCategories(categoriesWithCounts);
     } catch (error) {
       toast.error("Lỗi khi tải danh sách danh mục");
     }
@@ -85,13 +97,19 @@ export function Categories() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Xác nhận xóa danh mục?")) return;
+    setDeleteConfirm({ open: true, id });
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteConfirm.id;
     try {
       await categoryApi.deleteCategory(id);
       setCategories(prev => prev.filter(c => c.id !== id));
       toast.success("Đã xóa danh mục");
     } catch (error) {
       toast.error("Không thể xóa danh mục");
+    } finally {
+      setDeleteConfirm({ open: false, id: "" });
     }
   };
 
@@ -169,11 +187,15 @@ export function Categories() {
                     <TableCell className="text-slate-500 text-sm max-w-xs">
                       <p className="truncate">{cat.description || 'Chưa có mô tả'}</p>
                     </TableCell>
-                    <TableCell className="text-right font-semibold">0</TableCell>
+                    <TableCell className="text-right">
+                      <span className="inline-flex items-center justify-center min-w-[32px] h-8 px-2 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-sm">
+                        {cat.productCount}
+                      </span>
+                    </TableCell>
                     <TableCell>
-                      <button onClick={() => handleToggle(cat.id)} className="flex items-center gap-1.5">
-                        <ToggleRight className="w-5 h-5 text-emerald-500" />
-                        <span className="text-sm text-emerald-700 font-medium">Hoạt động</span>
+                      <button onClick={() => handleToggle(cat.id)} className="flex items-center gap-1.5 group">
+                        <ToggleRight className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+                        <span className="text-sm text-emerald-700 font-bold">Hoạt động</span>
                       </button>
                     </TableCell>
                     <TableCell className="text-right">
@@ -260,6 +282,15 @@ export function Categories() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa danh mục"
+        description="Bạn có chắc chắn muốn xóa danh mục này? Hành động này sẽ ảnh hưởng đến việc phân loại sản phẩm."
+        type="danger"
+        confirmText="Xóa danh mục"
+      />
     </AdminPageWrapper>
     </>
   );

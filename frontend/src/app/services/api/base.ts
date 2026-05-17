@@ -78,7 +78,21 @@ export class BaseApiService {
         errorData?.errors || errorData
       );
     }
-    return response.json();
+    if (response.status === 204) {
+      return null as any;
+    }
+
+    const text = await response.text();
+    if (!text) {
+      return null as any;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      console.error('Failed to parse JSON response:', text);
+      throw new ApiError('Invalid JSON response from server', response.status);
+    }
   }
 
   protected buildUrl(path: string, params?: Record<string, any>): string {

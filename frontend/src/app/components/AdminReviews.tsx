@@ -24,6 +24,7 @@ export function AdminReviews() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [ratingFilter, setRatingFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("date-desc");
   const [replyItem, setReplyItem] = useState<Review | null>(null);
   const [replyText, setReplyText] = useState("");
   const [viewItem, setViewItem] = useState<Review | null>(null);
@@ -34,6 +35,13 @@ export function AdminReviews() {
     const matchStatus = statusFilter === "all" || r.status === statusFilter;
     const matchRating = ratingFilter === "all" || r.rating === Number(ratingFilter);
     return matchSearch && matchStatus && matchRating;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case "rating-desc": return b.rating - a.rating;
+      case "rating-asc": return a.rating - b.rating;
+      case "date-asc": return new Date(a.date).getTime() - new Date(b.date).getTime();
+      default: return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
   });
 
   // Pagination
@@ -134,40 +142,70 @@ export function AdminReviews() {
           ))}
         </div>
 
-        {/* Filters */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Tìm kiếm tên người dùng, nội dung..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 rounded-xl"
-              />
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Tìm kiếm tên người dùng, nội dung..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="pl-9 rounded-xl h-11"
+                />
+              </div>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full sm:w-[180px] rounded-xl h-11">
+                  <SelectValue placeholder="Sắp xếp" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date-desc">Mới nhất</SelectItem>
+                  <SelectItem value="date-asc">Cũ nhất</SelectItem>
+                  <SelectItem value="rating-desc">Đánh giá cao nhất</SelectItem>
+                  <SelectItem value="rating-asc">Đánh giá thấp nhất</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px] rounded-xl">
-                <SelectValue placeholder="Trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="pending">Chờ duyệt</SelectItem>
-                <SelectItem value="approved">Đã duyệt</SelectItem>
-                <SelectItem value="rejected">Đã từ chối</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={ratingFilter} onValueChange={setRatingFilter}>
-              <SelectTrigger className="w-[140px] rounded-xl">
-                <SelectValue placeholder="Rating" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả sao</SelectItem>
-                {[5, 4, 3, 2, 1].map(r => (
-                  <SelectItem key={r} value={String(r)}>{r} sao</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            
+            <div className="flex flex-wrap gap-3">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px] rounded-xl h-10 bg-slate-50 border-none text-xs font-bold">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="pending">Chờ duyệt</SelectItem>
+                  <SelectItem value="approved">Đã duyệt</SelectItem>
+                  <SelectItem value="rejected">Đã từ chối</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                <SelectTrigger className="w-[140px] rounded-xl h-10 bg-slate-50 border-none text-xs font-bold">
+                  <SelectValue placeholder="Rating" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả sao</SelectItem>
+                  {[5, 4, 3, 2, 1].map(r => (
+                    <SelectItem key={r} value={String(r)}>{r} sao</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {(statusFilter !== "all" || ratingFilter !== "all" || searchQuery !== "") && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => {
+                    setStatusFilter("all");
+                    setRatingFilter("all");
+                    setSearchQuery("");
+                  }}
+                  className="h-10 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                >
+                  Xóa lọc
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 

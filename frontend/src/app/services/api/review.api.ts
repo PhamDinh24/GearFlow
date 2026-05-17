@@ -105,7 +105,7 @@ class ReviewApiService extends BaseApiService {
   // Admin: Get all reviews
   async getAllReviews(): Promise<ReviewDTO[]> {
     const response = await this.fetchWithTimeout(
-      this.buildUrl('/admin/reviews'),
+      this.buildUrl('/reviews/admin/all'),
       {
         method: 'GET',
         headers: this.getHeaders(),

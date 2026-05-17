@@ -14,6 +14,7 @@ import { Textarea } from "./ui/textarea";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Heart, ShoppingCart, Plus, Minus, Star, MessageSquare, CheckCircle, ChevronRight, Package } from "lucide-react";
 import { toast } from "sonner";
+import { refreshHeaderCounts } from "../utils/events";
 
 export function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -121,6 +122,7 @@ export function ProductDetail() {
       toast.success(`Đã thêm ${quantity} sản phẩm vào giỏ hàng`, {
         description: product.name
       });
+      refreshHeaderCounts();
       return true;
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể thêm vào giỏ hàng');
@@ -154,6 +156,7 @@ export function ProductDetail() {
         toast.success('Đã thêm vào danh sách yêu thích');
         setIsInWishlist(true);
       }
+      refreshHeaderCounts();
     } catch (error: any) {
       toast.error(error.message || 'Có lỗi xảy ra');
     } finally {

@@ -28,4 +28,5 @@ public class CartItemDTO {
 
     private BigDecimal price;
     private BigDecimal subtotal;
+    private Integer stock;
 }

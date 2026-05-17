@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { Heart, ShoppingCart, Trash2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { toast } from "sonner";
+import { refreshHeaderCounts } from "../utils/events";
 
 export function Wishlist() {
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
@@ -30,6 +31,7 @@ export function Wishlist() {
       await wishlistService.removeFromWishlist(productId);
       setWishlistItems(items => items.filter(item => item.productId !== productId));
       toast.success('Đã xóa khỏi danh sách yêu thích');
+      refreshHeaderCounts();
     } catch (error) {
       toast.error('Không thể xóa sản phẩm');
     }

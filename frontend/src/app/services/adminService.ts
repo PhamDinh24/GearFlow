@@ -6,10 +6,13 @@ export interface DashboardStats {
   totalUsers: number;
   totalProducts?: number;
   pendingOrders?: number;
+  confirmedOrders?: number;
   processingOrders?: number;
   shippedOrders?: number;
   deliveredOrders?: number;
   cancelledOrders?: number;
+  returnRequestedOrders?: number;
+  returnedOrders?: number;
 }
 
 export interface TopProduct {

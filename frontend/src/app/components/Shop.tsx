@@ -27,6 +27,7 @@ import {
   SheetTrigger,
 } from "./ui/sheet";
 import { toast } from "sonner";
+import { refreshHeaderCounts } from "../utils/events";
 
 export function Shop() {
   const [searchParams] = useSearchParams();
@@ -604,6 +605,7 @@ function ProductCard({ product }: ProductCardProps) {
         toast.success('Đã thêm vào danh sách yêu thích');
         setIsInWishlist(true);
       }
+      refreshHeaderCounts();
     } catch (error: any) {
       toast.error(error.message || 'Có lỗi xảy ra');
     } finally {
@@ -636,8 +638,7 @@ function ProductCard({ product }: ProductCardProps) {
       setAddingToCart(true);
       await cartService.addToCart(variantId, 1);
       toast.success('Đã thêm vào giỏ hàng');
-      // Root.tsx will refresh the count via polling or I could use a context event
-      window.dispatchEvent(new CustomEvent('cart-updated'));
+      refreshHeaderCounts();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể thêm vào giỏ hàng');
     } finally {
@@ -666,6 +667,7 @@ function ProductCard({ product }: ProductCardProps) {
     try {
       setAddingToCart(true);
       await cartService.addToCart(variantId, 1);
+      refreshHeaderCounts();
       navigate('/checkout', { state: { selectedVariantIds: [variantId] } });
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Không thể mua ngay');

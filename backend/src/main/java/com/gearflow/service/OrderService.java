@@ -148,6 +148,10 @@ public class OrderService {
         // Notify Admins about new order
         notifyAdmins("Đơn hàng mới", "Có một đơn hàng mới #" + order.getId().substring(0, 8) + " vừa được tạo.");
 
+        // Notify User about their own new order
+        notificationService.createNotification(userId, "ORDER", "Đặt hàng thành công", 
+            "Cảm ơn bạn đã đặt hàng! Đơn hàng #" + order.getId().substring(0, 8) + " của bạn đã được tiếp nhận.");
+
         log.info("Order created with ID: {}", order.getId());
         return toDTO(order);
     }
@@ -185,8 +189,11 @@ public class OrderService {
             handleStockRestoration(order);
         }
         
-        // If transitioning from PENDING to CONFIRMED, commit the stock
-        if (order.getStatus() == Order.OrderStatus.PENDING && newStatus == Order.OrderStatus.CONFIRMED) {
+        // If transitioning TO SHIPPED or DELIVERED from a reserved state, commit the stock
+        if ((newStatus == Order.OrderStatus.SHIPPED || newStatus == Order.OrderStatus.DELIVERED) &&
+            (order.getStatus() == Order.OrderStatus.PENDING || 
+             order.getStatus() == Order.OrderStatus.CONFIRMED || 
+             order.getStatus() == Order.OrderStatus.PROCESSING)) {
             commitStock(order);
         }
 
@@ -219,10 +226,11 @@ public class OrderService {
             throw new BusinessException("You can only cancel your own orders");
         }
 
-        // Only allow cancellation of PENDING, CONFIRMED, or PROCESSING orders
+        // Only allow cancellation of PENDING, CONFIRMED, PROCESSING, or SHIPPED orders
         if (order.getStatus() != Order.OrderStatus.PENDING 
             && order.getStatus() != Order.OrderStatus.CONFIRMED
-            && order.getStatus() != Order.OrderStatus.PROCESSING) {
+            && order.getStatus() != Order.OrderStatus.PROCESSING
+            && order.getStatus() != Order.OrderStatus.SHIPPED) {
             throw new BusinessException("Cannot cancel order in " + order.getStatus() + " status");
         }
 
@@ -355,12 +363,15 @@ public class OrderService {
         for (var item : order.getItems()) {
             if (item.getVariantId() != null) {
                 try {
-                    if (order.getStatus() == Order.OrderStatus.PENDING) {
-                        // For PENDING orders, stock was only reserved
+                    if (order.getStatus() == Order.OrderStatus.PENDING || 
+                        order.getStatus() == Order.OrderStatus.CONFIRMED || 
+                        order.getStatus() == Order.OrderStatus.PROCESSING) {
+                        // For these statuses, stock was only reserved
                         productService.releaseReservedStock(item.getVariantId(), item.getQuantity());
                         log.info("Released reserved stock for variant: {} qty: {}", item.getVariantId(), item.getQuantity());
-                    } else if (order.getStatus() != Order.OrderStatus.CANCELLED) {
-                        // For orders beyond PENDING (CONFIRMED, PROCESSING, etc.), stock was already decremented
+                    } else if (order.getStatus() == Order.OrderStatus.SHIPPED || 
+                               order.getStatus() == Order.OrderStatus.DELIVERED) {
+                        // For these statuses, stock was already decremented
                         productService.incrementStock(item.getVariantId(), item.getQuantity());
                         log.info("Incremented stock for variant: {} qty: {}", item.getVariantId(), item.getQuantity());
                     }
@@ -373,15 +384,17 @@ public class OrderService {
     
     private String getStatusMessage(Order.OrderStatus status) {
         switch (status) {
-            case PENDING: return "đang chờ xử lý";
-            case CONFIRMED: return "đã được xác nhận";
-            case PROCESSING: return "đang được chuẩn bị";
-            case SHIPPED: return "đang được giao đến bạn";
-            case DELIVERED: return "đã được giao thành công";
-            case CANCELLED: return "đã bị hủy";
-            case RETURN_REQUESTED: return "đã yêu cầu trả hàng";
-            case RETURNED: return "đã được hoàn trả";
-            case RETURN_REJECTED: return "yêu cầu trả hàng bị từ chối";
+            case PENDING: return "đang chờ xác nhận";
+            case CONFIRMED: return "đã xác nhận";
+            case PROCESSING: return "đang chuẩn bị hàng";
+            case SHIPPED: return "đang giao hàng";
+            case DELIVERED: return "đã giao";
+            case CANCELLED: return "đã hủy";
+            case RETURN_REQUESTED: return "yêu cầu trả hàng";
+            case RETURN_CONFIRMED: return "đã xác nhận yêu cầu trả hàng";
+            case RETURN_INSPECTING: return "đang kiểm tra sản phẩm";
+            case RETURNED: return "đã trả hàng thành công";
+            case RETURN_REJECTED: return "từ chối trả hàng";
             default: return "đã được cập nhật";
         }
     }
@@ -392,37 +405,53 @@ public class OrderService {
             return;
         }
         
-        // Allow RETURN_REQUESTED to RETURNED or RETURN_REJECTED
+        // Return flow transitions
         if (currentStatus == Order.OrderStatus.RETURN_REQUESTED && 
+            (newStatus == Order.OrderStatus.RETURN_CONFIRMED || newStatus == Order.OrderStatus.RETURN_REJECTED)) {
+            return;
+        }
+        if (currentStatus == Order.OrderStatus.RETURN_CONFIRMED && newStatus == Order.OrderStatus.RETURN_INSPECTING) {
+            return;
+        }
+        if (currentStatus == Order.OrderStatus.RETURN_INSPECTING && 
             (newStatus == Order.OrderStatus.RETURNED || newStatus == Order.OrderStatus.RETURN_REJECTED)) {
             return;
         }
 
-        // Cannot change status of completed orders
-        if (currentStatus == Order.OrderStatus.DELIVERED || currentStatus == Order.OrderStatus.CANCELLED || currentStatus == Order.OrderStatus.RETURNED || currentStatus == Order.OrderStatus.RETURN_REJECTED) {
+        // Cannot change status of terminal orders unless specifically allowed above
+        if (currentStatus == Order.OrderStatus.CANCELLED || currentStatus == Order.OrderStatus.RETURNED || currentStatus == Order.OrderStatus.RETURN_REJECTED) {
             throw new BusinessException("Cannot change status of completed order");
         }
         
-        // Validate logical flow
+        // Allow cancellation from almost anywhere before completion
+        if (newStatus == Order.OrderStatus.CANCELLED && 
+            (currentStatus == Order.OrderStatus.PENDING || 
+             currentStatus == Order.OrderStatus.CONFIRMED || 
+             currentStatus == Order.OrderStatus.PROCESSING || 
+             currentStatus == Order.OrderStatus.SHIPPED)) {
+            return;
+        }
+
+        // Validate logical forward flow
         switch (currentStatus) {
             case PENDING:
                 if (newStatus != Order.OrderStatus.CONFIRMED && newStatus != Order.OrderStatus.CANCELLED) {
-                    throw new BusinessException("PENDING order can only transition to CONFIRMED or CANCELLED");
+                    throw new BusinessException("PENDING order can only move to CONFIRMED or CANCELLED");
                 }
                 break;
             case CONFIRMED:
-                if (newStatus != Order.OrderStatus.PROCESSING && newStatus != Order.OrderStatus.CANCELLED) {
-                    throw new BusinessException("CONFIRMED order can only transition to PROCESSING or CANCELLED");
+                if (newStatus != Order.OrderStatus.PROCESSING && newStatus != Order.OrderStatus.SHIPPED && newStatus != Order.OrderStatus.CANCELLED) {
+                    throw new BusinessException("CONFIRMED order can move to PROCESSING, SHIPPED or CANCELLED");
                 }
                 break;
             case PROCESSING:
                 if (newStatus != Order.OrderStatus.SHIPPED && newStatus != Order.OrderStatus.CANCELLED) {
-                    throw new BusinessException("PROCESSING order can only transition to SHIPPED or CANCELLED");
+                    throw new BusinessException("PROCESSING order can move to SHIPPED or CANCELLED");
                 }
                 break;
             case SHIPPED:
-                if (newStatus != Order.OrderStatus.DELIVERED) {
-                    throw new BusinessException("SHIPPED order can only transition to DELIVERED");
+                if (newStatus != Order.OrderStatus.DELIVERED && newStatus != Order.OrderStatus.CANCELLED) {
+                    throw new BusinessException("SHIPPED order can only transition to DELIVERED or CANCELLED");
                 }
                 break;
         }

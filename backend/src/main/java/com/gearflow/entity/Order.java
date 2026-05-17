@@ -86,7 +86,16 @@ public class Order {
     private List<OrderItem> items = new ArrayList<>();
 
     public enum OrderStatus {
-        PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED,
-        RETURN_REQUESTED, RETURNED, RETURN_REJECTED
+        PENDING,          // Đang chờ xác nhận
+        CONFIRMED,        // Đã xác nhận
+        PROCESSING,       // Đang chuẩn bị hàng
+        SHIPPED,          // Đang giao hàng
+        DELIVERED,        // Đã giao
+        CANCELLED,        // Đã hủy
+        RETURN_REQUESTED, // Yêu cầu trả hàng
+        RETURN_CONFIRMED, // Đã xác nhận yêu cầu trả hàng
+        RETURN_INSPECTING, // Đang kiểm tra sản phẩm
+        RETURNED,         // Đã trả hàng thành công
+        RETURN_REJECTED   // Từ chối trả hàng
     }
 }

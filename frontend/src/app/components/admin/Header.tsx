@@ -39,25 +39,35 @@ export function Header() {
   const userMenuRef = React.useRef<HTMLDivElement>(null);
   const notifMenuRef = React.useRef<HTMLDivElement>(null);
 
+  const loadNotifs = React.useCallback(async () => {
+    try {
+      const [count, list] = await Promise.all([
+        notificationService.getUnreadCount(),
+        notificationService.getNotifications()
+      ]);
+      setNotificationCount(count || 0);
+      setNotifications(list || []);
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    }
+  }, []);
+
   // Load notifications
   React.useEffect(() => {
-    const loadNotifs = async () => {
-      try {
-        const [count, list] = await Promise.all([
-          notificationService.getUnreadCount(),
-          notificationService.getNotifications()
-        ]);
-        setNotificationCount(count || 0);
-        setNotifications(list || []);
-      } catch (error) {
-        console.error('Failed to load notifications:', error);
-      }
-    };
-
     loadNotifs();
     const interval = setInterval(loadNotifs, 10000); // Poll every 10s
-    return () => clearInterval(interval);
-  }, []);
+    
+    const refreshHandler = () => {
+      console.log('Admin: Refresh counts event received');
+      loadNotifs();
+    };
+    window.addEventListener("refresh-counts", refreshHandler);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("refresh-counts", refreshHandler);
+    };
+  }, [loadNotifs]);
 
   const handleLogout = () => {
     logout();

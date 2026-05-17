@@ -25,6 +25,9 @@ export function AdminProducts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterLayout, setFilterLayout] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStock, setFilterStock] = useState("all");
+  const [filterPrice, setFilterPrice] = useState("all");
+  const [sortBy, setSortBy] = useState("name-asc");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", basePrice: 0, stock: 0, brand: "", description: "" });
@@ -36,7 +39,27 @@ export function AdminProducts() {
     const matchStatus = filterStatus === "all" || 
       (filterStatus === "active" && p.isActive !== false) ||
       (filterStatus === "inactive" && p.isActive === false);
-    return matchSearch && matchLayout && matchStatus;
+    
+    const matchStock = filterStock === "all" ||
+      (filterStock === "out" && p.stock === 0) ||
+      (filterStock === "low" && p.stock > 0 && p.stock < 10) ||
+      (filterStock === "available" && p.stock >= 10);
+      
+    const matchPrice = filterPrice === "all" ||
+      (filterPrice === "low" && p.basePrice < 1000000) ||
+      (filterPrice === "mid" && p.basePrice >= 1000000 && p.basePrice < 3000000) ||
+      (filterPrice === "high" && p.basePrice >= 3000000);
+
+    return matchSearch && matchLayout && matchStatus && matchStock && matchPrice;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case "price-asc": return a.basePrice - b.basePrice;
+      case "price-desc": return b.basePrice - a.basePrice;
+      case "stock-asc": return a.stock - b.stock;
+      case "stock-desc": return b.stock - a.stock;
+      case "name-desc": return b.name.localeCompare(a.name);
+      default: return a.name.localeCompare(b.name);
+    }
   });
 
   // Pagination
@@ -135,39 +158,97 @@ export function AdminProducts() {
           ))}
         </div>
 
-        {/* Filters */}
         <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-5">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Tìm kiếm sản phẩm, thương hiệu..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 rounded-xl"
-              />
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Tìm kiếm sản phẩm, thương hiệu..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="pl-9 rounded-xl h-11"
+                />
+              </div>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full sm:w-[180px] rounded-xl h-11">
+                  <SelectValue placeholder="Sắp xếp" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name-asc">Tên A-Z</SelectItem>
+                  <SelectItem value="name-desc">Tên Z-A</SelectItem>
+                  <SelectItem value="price-asc">Giá thấp đến cao</SelectItem>
+                  <SelectItem value="price-desc">Giá cao đến thấp</SelectItem>
+                  <SelectItem value="stock-asc">Tồn kho tăng dần</SelectItem>
+                  <SelectItem value="stock-desc">Tồn kho giảm dần</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={filterLayout} onValueChange={setFilterLayout}>
-              <SelectTrigger className="w-[160px] rounded-xl">
-                <SelectValue placeholder="Layout" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả layout</SelectItem>
-                {['60%', '65%', '75%', 'TKL', 'Full-size'].map(l => (
-                  <SelectItem key={l} value={l}>{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[160px] rounded-xl">
-                <SelectValue placeholder="Trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="active">Đang hiển thị</SelectItem>
-                <SelectItem value="inactive">Đã ẩn</SelectItem>
-              </SelectContent>
-            </Select>
+            
+            <div className="flex flex-wrap gap-3">
+              <Select value={filterLayout} onValueChange={setFilterLayout}>
+                <SelectTrigger className="w-[140px] rounded-xl h-10 bg-slate-50 border-none text-xs font-bold">
+                  <SelectValue placeholder="Layout" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả layout</SelectItem>
+                  {['60%', '65%', '75%', 'TKL', 'Full-size'].map(l => (
+                    <SelectItem key={l} value={l}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[140px] rounded-xl h-10 bg-slate-50 border-none text-xs font-bold">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="active">Đang hiển thị</SelectItem>
+                  <SelectItem value="inactive">Đã ẩn</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterStock} onValueChange={setFilterStock}>
+                <SelectTrigger className="w-[140px] rounded-xl h-10 bg-slate-50 border-none text-xs font-bold">
+                  <SelectValue placeholder="Tồn kho" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả tồn kho</SelectItem>
+                  <SelectItem value="out">Hết hàng (0)</SelectItem>
+                  <SelectItem value="low">Sắp hết hàng (&lt;10)</SelectItem>
+                  <SelectItem value="available">Còn hàng (≥10)</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterPrice} onValueChange={setFilterPrice}>
+                <SelectTrigger className="w-[140px] rounded-xl h-10 bg-slate-50 border-none text-xs font-bold">
+                  <SelectValue placeholder="Mức giá" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả mức giá</SelectItem>
+                  <SelectItem value="low">Dưới 1M</SelectItem>
+                  <SelectItem value="mid">1M - 3M</SelectItem>
+                  <SelectItem value="high">Trên 3M</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {(filterLayout !== "all" || filterStatus !== "all" || filterStock !== "all" || filterPrice !== "all" || searchQuery !== "") && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => {
+                    setFilterLayout("all");
+                    setFilterStatus("all");
+                    setFilterStock("all");
+                    setFilterPrice("all");
+                    setSearchQuery("");
+                  }}
+                  className="h-10 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                >
+                  Xóa bộ lọc
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 

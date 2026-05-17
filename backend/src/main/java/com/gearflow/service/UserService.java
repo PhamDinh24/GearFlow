@@ -164,6 +164,52 @@ public class UserService {
         return convertToDTO(updated);
     }
 
+    @Transactional
+    public void initiatePasswordReset(String email) {
+        log.info("Initiating password reset for email: {}", email);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
+        // Generate secure token
+        String token = java.util.UUID.randomUUID().toString();
+        user.setResetPasswordToken(token);
+        user.setResetPasswordExpires(java.time.LocalDateTime.now().plusHours(24)); // Token valid for 24 hours
+
+        userRepository.save(user);
+
+        // TODO: Integrate with EmailNotificationService to send the reset link
+        log.info("Password reset token generated and saved for user: {}", user.getUsername());
+        
+        // Construct the reset link (this should match the frontend route)
+        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+        log.info("Reset link generated: {}", resetLink);
+        
+        // For development, we'll log it. In production, send via email.
+        // emailNotificationService.sendPasswordResetEmail(user.getEmail(), resetLink);
+    }
+
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        log.info("Resetting password using token");
+        User user = userRepository.findByResetPasswordToken(token)
+                .orElseThrow(() -> new com.gearflow.exception.BusinessException("Invalid or expired token", 
+                    org.springframework.http.HttpStatus.BAD_REQUEST));
+
+        // Check expiration
+        if (user.getResetPasswordExpires() == null || user.getResetPasswordExpires().isBefore(java.time.LocalDateTime.now())) {
+            throw new com.gearflow.exception.BusinessException("Password reset token has expired", 
+                org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
+
+        // Update password and clear token
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setResetPasswordToken(null);
+        user.setResetPasswordExpires(null);
+
+        userRepository.save(user);
+        log.info("Password successfully reset for user: {}", user.getUsername());
+    }
+
     private UserDTO convertToDTO(User user) {
         return UserDTO.builder()
             .id(user.getId())

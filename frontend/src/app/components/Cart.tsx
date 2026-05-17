@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { Minus, Plus, Trash2, ShoppingBag, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "./ui/checkbox";
+import { refreshHeaderCounts } from "../utils/events";
 
 interface CartItem {
   variantId: string;
@@ -61,6 +62,7 @@ export function Cart() {
           item.variantId === variantId ? { ...item, quantity: newQuantity } : item
         )
       );
+      refreshHeaderCounts();
     } catch (error) {
       toast.error('Không thể cập nhật số lượng');
     }
@@ -71,6 +73,7 @@ export function Cart() {
       await cartService.removeCartItem(variantId);
       setCartItems(items => items.filter(item => item.variantId !== variantId));
       toast.success('Đã xóa sản phẩm khỏi giỏ hàng');
+      refreshHeaderCounts();
     } catch (error) {
       toast.error('Không thể xóa sản phẩm');
     }

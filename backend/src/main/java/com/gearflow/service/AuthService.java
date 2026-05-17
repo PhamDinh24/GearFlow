@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private final EmailNotificationService emailNotificationService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
@@ -108,6 +109,41 @@ public class AuthService {
                 .role(user.getRole().toString())
                 .tokenType("Bearer")
                 .build();
+    }
+
+    @Transactional
+    public void initiatePasswordReset(String email) {
+        log.info("Initiating password reset for email: {}", email);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException("User not found with email: " + email, HttpStatus.NOT_FOUND));
+
+        String token = java.util.UUID.randomUUID().toString();
+        user.setResetPasswordToken(token);
+        user.setResetPasswordExpires(java.time.LocalDateTime.now().plusHours(24));
+
+        userRepository.save(user);
+        
+        // Send email with reset link
+        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+        emailNotificationService.sendPasswordResetEmail(email, resetLink);
+    }
+
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        log.info("Resetting password using token");
+        User user = userRepository.findByResetPasswordToken(token)
+                .orElseThrow(() -> new BusinessException("Invalid or expired token", HttpStatus.BAD_REQUEST));
+
+        if (user.getResetPasswordExpires() == null || user.getResetPasswordExpires().isBefore(java.time.LocalDateTime.now())) {
+            throw new BusinessException("Password reset token has expired", HttpStatus.BAD_REQUEST);
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setResetPasswordToken(null);
+        user.setResetPasswordExpires(null);
+
+        userRepository.save(user);
+        log.info("Password successfully reset for user: {}", user.getUsername());
     }
 
     private UserDTO convertToDTO(User user) {

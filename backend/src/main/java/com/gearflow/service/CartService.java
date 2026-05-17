@@ -11,6 +11,8 @@ import com.gearflow.exception.ResourceNotFoundException;
 import com.gearflow.repository.CartRepository;
 import com.gearflow.repository.ProductRepository;
 import com.gearflow.repository.ProductVariantRepository;
+import com.gearflow.repository.StockRepository;
+import com.gearflow.entity.Stock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class CartService {
     private final CartRepository cartRepository;
     private final ProductVariantRepository variantRepository;
     private final ProductRepository productRepository;
+    private final StockRepository stockRepository;
 
     @Transactional(readOnly = true)
     public CartDTO getCart(String userId) {
@@ -167,6 +170,10 @@ public class CartService {
                         variantDetails.append(variant.getConnectionType());
                     }
 
+                    Integer stockQty = stockRepository.findById(item.getVariantId())
+                            .map(Stock::getQuantity)
+                            .orElse(0);
+
                     return CartItemDTO.builder()
                             .variantId(item.getVariantId())
                             .productId(product.getId())
@@ -176,6 +183,7 @@ public class CartService {
                             .quantity(item.getQuantity())
                             .price(price)
                             .subtotal(subtotal)
+                            .stock(stockQty)
                             .build();
                 })
                 .collect(Collectors.toList());

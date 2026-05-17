@@ -9,23 +9,43 @@ import { HelpTooltip } from "./common/HelpTooltip";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "./ui/dialog";
-import { Plus, Edit, Trash2, Search, Globe, ToggleLeft, ToggleRight, Package } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Globe, ToggleLeft, ToggleRight, Package, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { usePagination } from "../hooks/usePagination";
 import { DataPagination } from "./ui/data-pagination";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "./ui/table";
+import { mockProducts } from "../data/mockData";
 
 export function AdminBrands() {
-  const [brands, setBrands] = useState<Brand[]>(mockBrands);
+  const brandsWithCounts = mockBrands.map(brand => ({
+    ...brand,
+    productCount: mockProducts.filter(p => p.brand === brand.name).length
+  }));
+  
+  const [brands, setBrands] = useState<Brand[]>(brandsWithCounts);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterCountry, setFilterCountry] = useState("all");
+  const [sortBy, setSortBy] = useState("name-asc");
   const [editItem, setEditItem] = useState<Brand | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", description: "", country: "", website: "" });
   const [addForm, setAddForm] = useState({ name: "", description: "", country: "", website: "" });
 
-  const filtered = brands.filter(b =>
-    b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    b.country.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filtered = brands.filter(b => {
+    const matchSearch = b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.country.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchCountry = filterCountry === "all" || b.country === filterCountry;
+    return matchSearch && matchCountry;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case "count-desc": return b.productCount - a.productCount;
+      case "count-asc": return a.productCount - b.productCount;
+      case "name-desc": return b.name.localeCompare(a.name);
+      default: return a.name.localeCompare(b.name);
+    }
+  });
 
   // Pagination
   const {
@@ -144,73 +164,125 @@ export function AdminBrands() {
           </div>
         </div>
 
-        {/* Search */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-5">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Tìm kiếm thương hiệu, quốc gia..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 rounded-xl"
-            />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Tìm kiếm thương hiệu, quốc gia..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-9 rounded-xl h-11"
+              />
+            </div>
+            
+            <Select value={filterCountry} onValueChange={setFilterCountry}>
+              <SelectTrigger className="w-full sm:w-[160px] rounded-xl h-11">
+                <SelectValue placeholder="Quốc gia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả quốc gia</SelectItem>
+                {[...new Set(brands.map(b => b.country))].map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-[180px] rounded-xl h-11">
+                <SelectValue placeholder="Sắp xếp" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Tên A-Z</SelectItem>
+                <SelectItem value="name-desc">Tên Z-A</SelectItem>
+                <SelectItem value="count-desc">Sản phẩm (Nhiều nhất)</SelectItem>
+                <SelectItem value="count-asc">Sản phẩm (Ít nhất)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Brands Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {paginatedBrands.map(brand => (
-            <div key={brand.id} className={`bg-white rounded-2xl border-2 p-5 hover:shadow-md transition-shadow ${
-              brand.isActive ? 'border-slate-200' : 'border-slate-100 opacity-70'
-            }`}>
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center text-2xl font-bold text-slate-600">
-                    {brand.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900">{brand.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-sm">{countryFlag[brand.country] || '🌐'}</span>
-                      <span className="text-xs text-slate-500">{brand.country}</span>
-                    </div>
-                  </div>
-                </div>
-                <button onClick={() => handleToggle(brand.id)} className="mt-1">
-                  {brand.isActive ? (
-                    <ToggleRight className="w-6 h-6 text-emerald-500" />
-                  ) : (
-                    <ToggleLeft className="w-6 h-6 text-slate-400" />
-                  )}
-                </button>
-              </div>
-
-              <p className="text-sm text-slate-500 mb-3 line-clamp-2 leading-relaxed">{brand.description}</p>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                    <Package className="w-4 h-4" />
-                    <span>{brand.productCount} sản phẩm</span>
-                  </div>
-                  {brand.website && (
-                    <a href={brand.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-indigo-600 hover:text-indigo-700 text-xs">
-                      <Globe className="w-3.5 h-3.5" />
-                      Website
-                    </a>
-                  )}
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => handleEditOpen(brand)} className="rounded-lg h-8 w-8 p-0 hover:bg-indigo-50 hover:text-indigo-600">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(brand.id)} className="rounded-lg h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
+        {/* Brands Table */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="p-5 border-b border-slate-100">
+            <h3 className="font-semibold text-slate-900">Danh sách thương hiệu ({filtered.length})</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead>Thương hiệu</TableHead>
+                  <TableHead>Quốc gia</TableHead>
+                  <TableHead>Mô tả</TableHead>
+                  <TableHead>Website</TableHead>
+                  <TableHead className="text-right">Số SP</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedBrands.map(brand => (
+                  <TableRow key={brand.id} className={`hover:bg-slate-50 ${!brand.isActive ? 'opacity-70' : ''}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-sm font-bold text-slate-600">
+                          {brand.name.charAt(0)}
+                        </div>
+                        <span className="font-semibold text-slate-900">{brand.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-lg">{countryFlag[brand.country] || '🌐'}</span>
+                        <span className="text-sm text-slate-600">{brand.country}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-slate-500 text-sm max-w-xs">
+                      <p className="truncate">{brand.description}</p>
+                    </TableCell>
+                    <TableCell>
+                      {brand.website ? (
+                        <a href={brand.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-indigo-600 hover:text-indigo-700 text-sm">
+                          <Globe className="w-4 h-4" />
+                          Link
+                        </a>
+                      ) : (
+                        <span className="text-slate-300 text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-slate-900">
+                      {brand.productCount}
+                    </TableCell>
+                    <TableCell>
+                      <button onClick={() => handleToggle(brand.id)} className="flex items-center gap-1.5">
+                        {brand.isActive ? (
+                          <>
+                            <ToggleRight className="w-5 h-5 text-emerald-500" />
+                            <span className="text-sm text-emerald-700 font-medium">Hoạt động</span>
+                          </>
+                        ) : (
+                          <>
+                            <ToggleLeft className="w-5 h-5 text-slate-400" />
+                            <span className="text-sm text-slate-500">Tắt</span>
+                          </>
+                        )}
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditOpen(brand)} className="rounded-lg hover:bg-indigo-50 hover:text-indigo-600">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(brand.id)} className="rounded-lg hover:bg-red-50 hover:text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
 
         {/* Pagination */}

@@ -153,11 +153,15 @@ export function Reports() {
 
   // Order status distribution
   const statusData = [
-    { name: 'Đã giao', value: orders.filter(o => o.status === 'DELIVERED').length, color: '#10b981' },
-    { name: 'Đang giao', value: orders.filter(o => o.status === 'SHIPPED').length, color: '#6366f1' },
-    { name: 'Đang xử lý', value: orders.filter(o => o.status === 'PROCESSING').length, color: '#f59e0b' },
-    { name: 'Chờ xử lý', value: orders.filter(o => o.status === 'PENDING').length, color: '#3b82f6' },
+    { name: 'Đang chờ xác nhận', value: orders.filter(o => o.status === 'PENDING').length, color: '#94a3b8' },
+    { name: 'Đã xác nhận', value: orders.filter(o => o.status === 'CONFIRMED').length, color: '#3b82f6' },
+    { name: 'Đang chuẩn bị hàng', value: orders.filter(o => o.status === 'PROCESSING').length, color: '#f59e0b' },
+    { name: 'Đang giao hàng', value: orders.filter(o => o.status === 'SHIPPED').length, color: '#6366f1' },
+    { name: 'Đã giao thành công', value: orders.filter(o => o.status === 'DELIVERED').length, color: '#10b981' },
     { name: 'Đã hủy', value: orders.filter(o => o.status === 'CANCELLED').length, color: '#ef4444' },
+    { name: 'Yêu cầu trả hàng', value: orders.filter(o => o.status === 'RETURN_REQUESTED').length, color: '#f97316' },
+    { name: 'Trả hàng thành công', value: orders.filter(o => o.status === 'RETURNED').length, color: '#ec4899' },
+    { name: 'Từ chối trả hàng', value: orders.filter(o => o.status === 'RETURN_REJECTED').length, color: '#475569' },
   ].filter(s => s.value > 0);
 
   // Payment method (mocked assuming COD for now)
