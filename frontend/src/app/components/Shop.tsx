@@ -46,6 +46,11 @@ export function Shop() {
     priceRange: [0, 5000000] as [number, number],
     layouts: [] as string[],
     connectionTypes: [] as string[],
+    switchTypes: [] as string[],      // NEW
+    keycapMaterials: [] as string[],  // NEW
+    features: [] as string[],         // NEW
+    inStock: true,                    // NEW
+    onSale: false,                    // NEW
   });
 
   useEffect(() => {
@@ -100,6 +105,11 @@ export function Shop() {
       priceRange: [0, 5000000],
       layouts: [],
       connectionTypes: [],
+      switchTypes: [],
+      keycapMaterials: [],
+      features: [],
+      inStock: true,
+      onSale: false,
     });
     setSearchQuery('');
   };
@@ -137,8 +147,42 @@ export function Shop() {
       );
     }
 
-    // Active and In Stock filter
-    result = result.filter(p => p.active !== false && p.stock > 0);
+    // Switch type filter
+    if (filters.switchTypes.length > 0) {
+      result = result.filter(p => 
+        p.variants?.some(v => v.switchType && filters.switchTypes.some(st => v.switchType?.toLowerCase().includes(st.toLowerCase())))
+      );
+    }
+
+    // Keycap material filter
+    if (filters.keycapMaterials.length > 0) {
+      result = result.filter(p => 
+        p.variants?.some(v => v.keycapSet && filters.keycapMaterials.some(km => v.keycapSet?.toLowerCase().includes(km.toLowerCase())))
+      );
+    }
+
+    // Features filter
+    if (filters.features.length > 0) {
+      result = result.filter(p => {
+        const productText = `${p.name} ${p.description || ''}`.toLowerCase();
+        return filters.features.some(feature => productText.includes(feature.toLowerCase()));
+      });
+    }
+
+    // In stock filter
+    if (filters.inStock) {
+      result = result.filter(p => p.stock > 0);
+    }
+
+    // On sale filter (products with variants that have price modifiers)
+    if (filters.onSale) {
+      result = result.filter(p => 
+        p.variants?.some(v => v.priceModifier && v.priceModifier < 0)
+      );
+    }
+
+    // Active filter
+    result = result.filter(p => p.active !== false);
 
     // Sorting
     switch (sortBy) {
@@ -174,7 +218,11 @@ export function Shop() {
     filters.brandIds.length +
     filters.layouts.length +
     filters.connectionTypes.length +
-    (filters.priceRange[0] > 0 || filters.priceRange[1] < 5000000 ? 1 : 0);
+    filters.switchTypes.length +
+    filters.keycapMaterials.length +
+    filters.features.length +
+    (filters.priceRange[0] > 0 || filters.priceRange[1] < 5000000 ? 1 : 0) +
+    (filters.onSale ? 1 : 0);
 
   // Client-side pagination for filtered results
   const ITEMS_PER_PAGE = 12;
@@ -311,6 +359,85 @@ export function Shop() {
                     {['Wired', 'Wireless', 'Bluetooth', 'Tri-mode'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Switch Type */}
+              <div className="space-y-2">
+                <Label className="text-sm font-bold text-slate-700">Loại switch</Label>
+                <Select 
+                  value={filters.switchTypes[0] || "all"} 
+                  onValueChange={(v) => setFilters(prev => ({ ...prev, switchTypes: v === "all" ? [] : [v] }))}
+                >
+                  <SelectTrigger className="w-full bg-slate-50 border-slate-200 rounded-xl">
+                    <SelectValue placeholder="Tất cả switch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả switch</SelectItem>
+                    {['Cherry MX', 'Gateron', 'Kailh', 'Blue', 'Red', 'Brown', 'Silent'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Keycap Material */}
+              <div className="space-y-2">
+                <Label className="text-sm font-bold text-slate-700">Chất liệu keycap</Label>
+                <Select 
+                  value={filters.keycapMaterials[0] || "all"} 
+                  onValueChange={(v) => setFilters(prev => ({ ...prev, keycapMaterials: v === "all" ? [] : [v] }))}
+                >
+                  <SelectTrigger className="w-full bg-slate-50 border-slate-200 rounded-xl">
+                    <SelectValue placeholder="Tất cả chất liệu" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả chất liệu</SelectItem>
+                    {['PBT', 'ABS', 'Double-shot', 'Dye-sub'].map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Features */}
+              <div className="space-y-2">
+                <Label className="text-sm font-bold text-slate-700">Tính năng</Label>
+                <Select 
+                  value={filters.features[0] || "all"} 
+                  onValueChange={(v) => setFilters(prev => ({ ...prev, features: v === "all" ? [] : [v] }))}
+                >
+                  <SelectTrigger className="w-full bg-slate-50 border-slate-200 rounded-xl">
+                    <SelectValue placeholder="Tất cả tính năng" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả tính năng</SelectItem>
+                    {['RGB', 'Hot-swap', 'Programmable', 'Gaming', 'Compact'].map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Stock Status */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="inStock"
+                    checked={filters.inStock}
+                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, inStock: checked as boolean }))}
+                  />
+                  <label htmlFor="inStock" className="text-sm font-medium cursor-pointer">
+                    Chỉ hiển thị còn hàng
+                  </label>
+                </div>
+              </div>
+
+              {/* On Sale */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="onSale"
+                    checked={filters.onSale}
+                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, onSale: checked as boolean }))}
+                  />
+                  <label htmlFor="onSale" className="text-sm font-medium cursor-pointer">
+                    Đang giảm giá
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -677,8 +804,8 @@ function ProductCard({ product }: ProductCardProps) {
   };
   
   return (
-    <div className="group">
-      <Link to={`/product/${product.id}`}>
+    <div className="group flex flex-col h-full">
+      <Link to={`/product/${product.id}`} className="shrink-0">
         <div className="aspect-square overflow-hidden bg-slate-100 rounded-2xl mb-4 relative">
           <img
             src={product.imageUrl || 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400'}
@@ -702,17 +829,17 @@ function ProductCard({ product }: ProductCardProps) {
         </div>
       </Link>
 
-      <div className="space-y-2">
+      <div className="flex flex-col flex-1 gap-2">
         <Link to={`/product/${product.id}`}>
           <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
             {product.name}
           </h3>
         </Link>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {product.brandId && (
+        <div className="flex items-center gap-2 flex-wrap mb-2">
+          {product.brandName && (
             <span className="text-xs px-2 py-1 bg-slate-100 text-slate-700 rounded-md font-medium">
-              {product.brandId}
+              {product.brandName}
             </span>
           )}
           {product.stock > 0 ? (
@@ -726,11 +853,12 @@ function ProductCard({ product }: ProductCardProps) {
           )}
         </div>
 
-        <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
-          {product.description}
-        </p>
+        <div 
+          className="text-sm text-slate-600 line-clamp-2 leading-relaxed prose prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ __html: product.description || '' }}
+        />
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between pt-2 mt-auto">
           <div className="flex flex-col">
             <span className="text-xs text-slate-500">Giá từ</span>
             <span className="text-xl font-bold text-slate-900">

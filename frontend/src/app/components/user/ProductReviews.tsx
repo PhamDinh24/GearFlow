@@ -48,10 +48,15 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
   const loadReviews = async () => {
     try {
       setLoading(true);
+      // Fetch reviews for THIS specific product only
       const [reviewsData, avgRating] = await Promise.all([
         reviewApi.getProductReviews(productId),
         reviewApi.getAverageRating(productId),
       ]);
+      
+      // Log for debugging
+      console.log(`Loading reviews for product ${productId}:`, reviewsData.length, 'reviews');
+      
       setReviews(reviewsData);
       setAverageRating(avgRating);
     } catch (error) {
@@ -261,36 +266,52 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
           <div className="border-b border-slate-100 p-6 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="relative">
+                <label htmlFor="review-search" className="sr-only">Tìm kiếm đánh giá</label>
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <Input
+                  id="review-search"
+                  name="search"
                   placeholder="Tìm kiếm đánh giá..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 h-10 rounded-xl border-slate-100 bg-slate-50/50 focus:bg-white transition-all text-sm"
+                  aria-label="Tìm kiếm đánh giá"
                 />
               </div>
-              <select
-                value={filterRating}
-                onChange={(e) => setFilterRating(e.target.value as FilterOption)}
-                className="w-full px-4 py-2 h-10 border border-slate-100 rounded-xl bg-slate-50/50 hover:bg-white transition-all appearance-none cursor-pointer text-sm font-medium text-slate-600"
-              >
-                <option value="all">Tất cả sao</option>
-                <option value="5">5 sao</option>
-                <option value="4">4 sao</option>
-                <option value="3">3 sao</option>
-                <option value="2">2 sao</option>
-                <option value="1">1 sao</option>
-              </select>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="w-full px-4 py-2 h-10 border border-slate-100 rounded-xl bg-slate-50/50 hover:bg-white transition-all appearance-none cursor-pointer text-sm font-medium text-slate-600"
-              >
-                <option value="newest">Mới nhất</option>
-                <option value="oldest">Cũ nhất</option>
-                <option value="highest">Cao nhất</option>
-                <option value="lowest">Thấp nhất</option>
-              </select>
+              <div>
+                <label htmlFor="filter-rating" className="sr-only">Lọc theo số sao</label>
+                <select
+                  id="filter-rating"
+                  name="filterRating"
+                  value={filterRating}
+                  onChange={(e) => setFilterRating(e.target.value as FilterOption)}
+                  className="w-full px-4 py-2 h-10 border border-slate-100 rounded-xl bg-slate-50/50 hover:bg-white transition-all appearance-none cursor-pointer text-sm font-medium text-slate-600"
+                  aria-label="Lọc theo số sao"
+                >
+                  <option value="all">Tất cả sao</option>
+                  <option value="5">5 sao</option>
+                  <option value="4">4 sao</option>
+                  <option value="3">3 sao</option>
+                  <option value="2">2 sao</option>
+                  <option value="1">1 sao</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="sort-by" className="sr-only">Sắp xếp theo</label>
+                <select
+                  id="sort-by"
+                  name="sortBy"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="w-full px-4 py-2 h-10 border border-slate-100 rounded-xl bg-slate-50/50 hover:bg-white transition-all appearance-none cursor-pointer text-sm font-medium text-slate-600"
+                  aria-label="Sắp xếp theo"
+                >
+                  <option value="newest">Mới nhất</option>
+                  <option value="oldest">Cũ nhất</option>
+                  <option value="highest">Cao nhất</option>
+                  <option value="lowest">Thấp nhất</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -429,19 +450,21 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
 
             {/* Comment Section */}
             <div>
-              <Label htmlFor="comment" className="text-lg font-bold mb-2 block">
+              <Label htmlFor="review-comment" className="text-lg font-bold mb-2 block">
                 Nhận xét chi tiết
               </Label>
               <Textarea
-                id="comment"
+                id="review-comment"
+                name="comment"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Hãy chia sẻ chi tiết về trải nghiệm của bạn với sản phẩm này. Điều gì bạn thích? Có điều gì cần cải thiện không?"
                 className="mt-2 min-h-[150px] text-base"
                 maxLength={500}
+                aria-describedby="comment-help"
               />
               <div className="flex items-center justify-between mt-2">
-                <p className={`text-sm ${comment.length < 10 ? 'text-red-500' : 'text-gray-500'}`}>
+                <p id="comment-help" className={`text-sm ${comment.length < 10 ? 'text-red-500' : 'text-gray-500'}`}>
                   {comment.length < 10 && '⚠️ '}
                   {comment.length}/500 ký tự
                   {comment.length < 10 && ' (Tối thiểu 10 ký tự)'}

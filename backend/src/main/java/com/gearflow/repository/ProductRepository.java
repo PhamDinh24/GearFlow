@@ -20,6 +20,10 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     
     List<Product> findByBrandId(String brandId);
     
+    // Find products by brand name (join with Brand table)
+    @Query("SELECT p FROM Product p JOIN Brand b ON p.brandId = b.id WHERE LOWER(b.name) LIKE LOWER(CONCAT('%', :brandName, '%'))")
+    List<Product> findByBrandNameContainingIgnoreCase(@Param("brandName") String brandName, Pageable pageable);
+    
     // For recommendations
     List<Product> findByBrandIdAndIdNot(String brandId, String excludeId, Pageable pageable);
     

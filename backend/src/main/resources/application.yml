@@ -54,6 +54,10 @@ server:
   port: 8080
   servlet:
     context-path: /api
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
 
 jwt:
   secret: ${JWT_SECRET:gearflow-secret-key-2024-spring-boot-jwt-authentication-authorization-token-security}
@@ -65,7 +69,7 @@ logging:
     root: INFO
     com.gearflow: DEBUG
     org.springframework.web: DEBUG
-    org.hibernate.SQL: DEBUG
+    org.hibernate.SQL: INFO
   file:
     name: logs/gearflow.log
   pattern:
@@ -86,3 +90,7 @@ vnpay:
   hashSecret: U1C7GCCO2F7TDUH7T7OP9QF8ZIP0H768
   apiUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
   returnUrl: ${VNPAY_RETURN_URL:http://localhost:5173/payment-result}
+
+groq:
+  api:
+    key: ${GROQ_API_KEY:}

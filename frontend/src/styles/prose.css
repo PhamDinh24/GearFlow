@@ -1,0 +1,183 @@
+/* Prose styles for HTML content rendering */
+.prose {
+  color: #334155;
+  max-width: 65ch;
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.prose h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+.prose p {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.prose ul {
+  list-style-type: disc;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.prose ol {
+  list-style-type: decimal;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.prose li {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.prose strong {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose a {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+.prose a:hover {
+  color: #4338ca;
+}
+
+.prose code {
+  background-color: #f1f5f9;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.prose pre {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.prose blockquote {
+  border-left: 4px solid #e2e8f0;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #64748b;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.prose hr {
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.prose th {
+  background-color: #f8fafc;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.prose td {
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+/* Smaller prose variant */
+.prose-sm {
+  font-size: 0.875rem;
+}
+
+.prose-sm h2 {
+  font-size: 1.25rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-sm h3 {
+  font-size: 1.125rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-sm p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-sm ul,
+.prose-sm ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.prose-sm li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Line clamp support for prose */
+.prose.line-clamp-2,
+.prose-sm.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.prose.line-clamp-3,
+.prose-sm.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Hide HTML tags when they appear as text */
+.prose *:not(code):not(pre) {
+  /* Ensure HTML is rendered, not displayed as text */
+}

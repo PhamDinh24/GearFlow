@@ -238,7 +238,7 @@ export function ProductDetail() {
               <div className="flex items-center gap-2 mb-3">
                 {isNew && <Badge className="bg-indigo-600">Mới</Badge>}
                 <Badge variant="outline" className="border-slate-200 text-slate-600">
-                  {product.brandId}
+                  {product.brandName || product.brandId}
                 </Badge>
               </div>
               <h1 className="text-3xl font-bold mb-3 text-slate-900 tracking-tight">{product.name}</h1>
@@ -258,8 +258,6 @@ export function ProductDetail() {
                   <span className="text-sm text-slate-500">({reviews.length} đánh giá)</span>
                 </div>
               )}
-
-              <p className="text-slate-600 leading-relaxed">{product.description}</p>
             </div>
 
             {/* Price Card */}
@@ -399,6 +397,12 @@ export function ProductDetail() {
                 Mua ngay
               </Button>
             </div>
+
+            {/* Product Description - Moved below actions */}
+            <div className="mt-8 pt-8 border-t border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900 mb-4">Giới Thiệu Về Sản Phẩm</h3>
+              <div className="text-slate-600 leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: product.description || '' }} />
+            </div>
           </div>
         </div>
 
@@ -428,13 +432,13 @@ export function ProductDetail() {
                 <CardContent className="p-6">
                   <div className="divide-y divide-slate-100">
                     {[
-                      { label: 'Thương hiệu', value: product.brandId },
-                      { label: 'Danh mục', value: product.categoryId },
+                      { label: 'Thương hiệu', value: product.brandName || product.brandId },
+                      { label: 'Danh mục', value: product.categoryName || product.categoryId },
                       { label: 'Giá', value: `${product.basePrice?.toLocaleString('vi-VN') || '0'}đ` },
                       { label: 'Tồn kho', value: `${product.stock} sản phẩm` },
-                      { label: 'Đánh giá trung bình', value: product.averageRating ? `${product.averageRating.toFixed(1)}/5` : 'Chưa có' },
-                      { label: 'Số đánh giá', value: `${product.reviewCount} đánh giá` },
-                      { label: 'Hỗ trợ', value: product.support || 'Liên hệ' },
+                      { label: 'Đánh giá trung bình', value: avgRating > 0 ? `${avgRating.toFixed(1)}/5` : 'Chưa có' },
+                      { label: 'Số đánh giá', value: `${reviews.length} đánh giá` },
+                      { label: 'Hỗ trợ', value: product.support || 'Windows, Mac' },
                       { label: 'Ngày tạo', value: new Date(product.createdAt).toLocaleDateString('vi-VN') },
                     ].map(item => (
                       <div key={item.label} className="flex justify-between items-center py-3">

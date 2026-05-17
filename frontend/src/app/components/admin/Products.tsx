@@ -16,10 +16,10 @@ import {
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "../ui/tabs";
-import { Search, Plus, Edit, Eye, EyeOff, Package, TrendingUp, Info, Trash2, Camera, Loader2, ToggleRight, ToggleLeft } from "lucide-react";
+import { Search, Plus, Edit, Eye, EyeOff, Package, TrendingUp, Info, Trash2, Camera, Loader2, ToggleRight, ToggleLeft, Sparkles } from "lucide-react";
 import { imageService } from "../../services/imageService";
 import { toast } from "sonner";
-import { productApi } from "../../services/api";
+import { productApi, aiApi } from "../../services/api";
 import { variantService } from "../../services/variantService";
 import { productService } from "../../services/productService";
 import { ProductDTO } from "../../app/types";
@@ -57,6 +57,7 @@ export function Products() {
   const [addLoading, setAddLoading] = useState(false);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [brands, setBrands] = useState<BrandOption[]>([]);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [editForm, setEditForm] = useState({ 
     name: "", 
     basePrice: 0, 
@@ -588,7 +589,42 @@ export function Products() {
               />
             </div>
             <div>
-              <Label className="mb-1.5 block text-sm font-medium">Mô tả</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="block text-sm font-medium">Mô tả</Label>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={async () => {
+                    const brand = brands.find(b => b.id === editForm.brand)?.name || "";
+                    if (!editForm.name || !brand) {
+                      toast.error("Vui lòng nhập tên và chọn thương hiệu trước khi tạo mô tả");
+                      return;
+                    }
+                    try {
+                      setIsGeneratingDesc(true);
+                      const desc = await aiApi.generateDescription({
+                        name: editForm.name,
+                        brand: brand,
+                        switchType: "",
+                        layout: editForm.layout,
+                        extraFeatures: ""
+                      });
+                      setEditForm({...editForm, description: desc});
+                      toast.success("Đã tạo mô tả bằng AI");
+                    } catch (e) {
+                      toast.error("Lỗi khi tạo mô tả");
+                    } finally {
+                      setIsGeneratingDesc(false);
+                    }
+                  }}
+                  disabled={isGeneratingDesc}
+                  className="h-7 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                >
+                  {isGeneratingDesc ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                  ✨ Viết bằng AI
+                </Button>
+              </div>
               <textarea
                 value={editForm.description}
                 onChange={e => setEditForm({ ...editForm, description: e.target.value })}
@@ -680,7 +716,7 @@ export function Products() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-slate-600">Mô tả</Label>
-                  <p className="text-slate-700 mt-1 leading-relaxed">{viewingProduct.description}</p>
+                  <div className="text-slate-700 mt-1 leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: viewingProduct.description || '' }} />
                 </div>
                 {viewingProduct.imageUrl && (
                   <div>
@@ -952,7 +988,42 @@ export function Products() {
               />
             </div>
             <div>
-              <Label className="mb-1.5 block text-sm font-medium">Mô tả</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="block text-sm font-medium">Mô tả</Label>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={async () => {
+                    const brandName = brands.find(b => b.id === addForm.brandId)?.name || "";
+                    if (!addForm.name || !brandName) {
+                      toast.error("Vui lòng nhập tên và chọn thương hiệu trước khi tạo mô tả");
+                      return;
+                    }
+                    try {
+                      setIsGeneratingDesc(true);
+                      const desc = await aiApi.generateDescription({
+                        name: addForm.name,
+                        brand: brandName,
+                        switchType: "",
+                        layout: addForm.layout,
+                        extraFeatures: ""
+                      });
+                      setAddForm({...addForm, description: desc});
+                      toast.success("Đã tạo mô tả bằng AI");
+                    } catch (e) {
+                      toast.error("Lỗi khi tạo mô tả");
+                    } finally {
+                      setIsGeneratingDesc(false);
+                    }
+                  }}
+                  disabled={isGeneratingDesc}
+                  className="h-7 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                >
+                  {isGeneratingDesc ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                  ✨ Viết bằng AI
+                </Button>
+              </div>
               <textarea
                 value={addForm.description}
                 onChange={e => setAddForm({ ...addForm, description: e.target.value })}

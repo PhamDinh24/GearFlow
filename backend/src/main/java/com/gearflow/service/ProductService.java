@@ -47,6 +47,7 @@ public class ProductService {
     private final com.gearflow.repository.AttributeDefinitionRepository attributeDefinitionRepository;
     private final com.gearflow.repository.UserRepository userRepository;
     private final OrderItemRepository orderItemRepository;
+    private final com.gearflow.repository.ReviewRepository reviewRepository;
 
     @Cacheable(value = "products", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -197,13 +198,27 @@ public class ProductService {
                 })
                 .sum();
 
+        // Fetch Brand and Category names
+        String brandName = brandRepository.findById(product.getBrandId())
+                .map(Brand::getName).orElse(product.getBrandId());
+        String categoryName = categoryRepository.findById(product.getCategoryId())
+                .map(Category::getName).orElse(product.getCategoryId());
+
+        // Fetch Review stats
+        List<com.gearflow.entity.Review> reviews = reviewRepository.findByProductId(product.getId());
+        int reviewCount = reviews.size();
+        Double averageRating = reviewCount > 0 ? 
+            reviews.stream().mapToDouble(com.gearflow.entity.Review::getRating).average().orElse(0.0) : 0.0;
+
         return ProductDTO.builder()
                 .id(product.getId())
                 .name(product.getName())
                 .description(product.getDescription())
                 .basePrice(product.getBasePrice())
                 .categoryId(product.getCategoryId())
+                .categoryName(categoryName)
                 .brandId(product.getBrandId())
+                .brandName(brandName)
                 .support(product.getSupport())
                 .imageUrl(product.getImageUrl())
                 .layout(product.getLayout())
@@ -214,6 +229,8 @@ public class ProductService {
                 .variants(variantDTOs)
                 .attributes(attributeDTOs)
                 .stock(totalStock)
+                .averageRating(averageRating)
+                .reviewCount(reviewCount)
                 .build();
     }
 

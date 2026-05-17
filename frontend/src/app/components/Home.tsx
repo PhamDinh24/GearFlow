@@ -253,8 +253,8 @@ function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div className="group">
-      <Link to={`/product/${product.id}`}>
+    <div className="group flex flex-col h-full">
+      <Link to={`/product/${product.id}`} className="shrink-0">
         <div className="aspect-square overflow-hidden bg-slate-100 rounded-2xl mb-4 relative">
           <img
             src={product.imageUrl || 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400'}
@@ -280,16 +280,17 @@ function ProductCard({ product }: ProductCardProps) {
         </div>
       </Link>
 
-      <div className="space-y-2">
+      <div className="flex flex-col flex-1 gap-2">
         <Link to={`/product/${product.id}`}>
           <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
             {product.name}
           </h3>
         </Link>
-        <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
-          {product.description}
-        </p>
-        <div className="flex items-center justify-between pt-2">
+        <div 
+          className="text-sm text-slate-600 line-clamp-2 leading-relaxed prose prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ __html: product.description || '' }}
+        />
+        <div className="flex items-center justify-between pt-2 mt-auto">
           <div className="flex flex-col">
             <span className="text-xs text-slate-500">Từ</span>
             <span className="text-xl font-bold text-slate-900">

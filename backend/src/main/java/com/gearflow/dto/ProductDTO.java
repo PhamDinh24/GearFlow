@@ -21,6 +21,8 @@ public class ProductDTO {
     private BigDecimal basePrice;
     private String categoryId;
     private String brandId;
+    private String brandName;
+    private String categoryName;
     private String support;
     private String imageUrl;
     private String layout;

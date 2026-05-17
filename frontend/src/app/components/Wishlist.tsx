@@ -110,9 +110,9 @@ export function Wishlist() {
                     <Trash2 className="w-5 h-5 text-red-500" />
                   </button>
                   <div className="absolute top-3 left-3 flex flex-col gap-2">
-                    {product.brandId && (
+                    {product.brandName && (
                       <Badge variant="outline" className="bg-white/90 backdrop-blur-sm border-slate-200">
-                        {product.brandId}
+                        {product.brandName}
                       </Badge>
                     )}
                   </div>
@@ -125,9 +125,10 @@ export function Wishlist() {
                     {product.name}
                   </h3>
                 </Link>
-                <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
-                  {product.description}
-                </p>
+                <div 
+                  className="text-sm text-slate-600 line-clamp-2 leading-relaxed prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: product.description || '' }}
+                />
                 <div className="flex items-center justify-between pt-2">
                   <div className="flex flex-col">
                     <span className="text-xs text-slate-500">Từ</span>

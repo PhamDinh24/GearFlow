@@ -10,6 +10,7 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Input } from "../ui/input";
 import { notificationService } from "../../services/notificationService";
+import { AIChatbot } from "../common/AIChatbot";
 
 export function Root() {
   const location = useLocation();
@@ -545,6 +546,9 @@ export function Root() {
           </div>
         </footer>
       )}
+
+      {/* Tích hợp AI Chatbot cho tất cả User page */}
+      {!isAdminPage && <AIChatbot />}
     </div>
   );
 }

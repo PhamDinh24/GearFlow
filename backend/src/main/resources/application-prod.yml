@@ -114,3 +114,7 @@ vnpay:
   hashSecret: ${VNPAY_HASH_SECRET}
   apiUrl: ${VNPAY_API_URL}
   returnUrl: ${VNPAY_RETURN_URL}
+
+gemini:
+  api:
+    key: ${GEMINI_API_KEY:AIzaSyAIeDmzHD-KXkZ5TpiaebiTx-ZdNQSU0j0}
